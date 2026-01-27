@@ -1,0 +1,7 @@
+services:
+  poly:
+    image: nginxdemos/hello
+    container_name: poly
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3001:80"
