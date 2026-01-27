@@ -16,7 +16,7 @@ The following features are planned for future iterations:
 
 ### Phase 2: Enhanced Data & Monitoring
 - [x] **Market Filtering**: Fetch markets by specific tags or IDs (Implemented text filtering).
-- [ ] **Price History**: Retrieve orderbook state or recent trades.
+- [x] **Price History / Orderbook**: Retrieve orderbook state (Implemented `get_order_book` with `--book`).
 - [ ] **Polling/Monitoring**: Script loop to check market changes periodically.
 
 ### Phase 3: Trading Execution
