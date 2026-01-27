@@ -1,7 +1,11 @@
 services:
   poly:
-    image: nginxdemos/hello
+    build: .
     container_name: poly
-    restart: unless-stopped
-    ports:
-      - "127.0.0.1:3001:80"
+    env_file:
+      - .env
+    # Restart policy can be adjusted depending on if it's a daemon or a one-off script
+    # restart: unless-stopped
+    volumes:
+      - .:/app
+    command: python poly_client.py
