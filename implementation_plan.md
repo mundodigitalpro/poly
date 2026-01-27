@@ -19,10 +19,10 @@ The following features are planned for future iterations:
 - [x] **Price History / Orderbook**: Retrieve orderbook state (Implemented `get_order_book` with `--book`).
 - [x] **Polling/Monitoring**: Script loop to check market changes periodically (Implemented `--monitor`).
 
-### Phase 3: Trading Execution
-- [ ] **Order Placement**: Implement `buy` and `sell` logic using signed transactions (requires Private Key).
+## Phase 3: Trading Execution
+- [x] **Balance Checks**: Check USDC balance before trading (Implemented `--balance`).
+- [ ] **Order Placement**: Implement `buy` and `sell` logic.
 - [ ] **Order Management**: List open orders and cancel them.
-- [ ] **Balance Checks**: Check USDC balance before trading.
 
 ## Verification Plan
 (See `CHANGELOG.md` for version history)

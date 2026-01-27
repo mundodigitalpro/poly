@@ -24,6 +24,7 @@ def main():
     parser.add_argument("--book", type=str, help="Get Orderbook for a specific Token ID")
     parser.add_argument("--monitor", action="store_true", help="Continuous monitoring (Poll mode)")
     parser.add_argument("--interval", type=int, default=5, help="Polling interval in seconds")
+    parser.add_argument("--balance", action="store_true", help="Get account balance")
     args = parser.parse_args()
 
     logger.info("Starting Polymarket Client...")
@@ -64,6 +65,42 @@ def main():
             funder=private_key, # Use private key as funder for gasless transactions if supported
         )
         logger.info("Client initialized successfully.")
+
+        if args.balance:
+            logger.info("Fetching Account Balance...")
+            if not private_key:
+                logger.error("Private Key is required to fetch balance/allowance (and to trade). Please set POLY_PRIVATE_KEY in .env.")
+                return
+
+            try:
+                # Based on documentation/common usage patterns
+                # This returns the collateral (USDC) balance and allowance
+                # NOTE: Polymarket uses a wrapper/proxy, so we check the proxy allowance/balance too usually.
+                # But let's start with basic get_balance_allowance or similar.
+                # If py_clob_client follows standard, it might have get_balance_allowance(params)
+                # Let's try inspecting or using a safe method.
+                # Actually, standard usage is often: client.get_balance_allowance(params=...)
+                # But simpler method might be client.get_collateral_balance() or similar?
+                # Let's inspect `client` methods to be sure or try the most standard usage.
+                # Search result mentioned `account_balance()`.
+                
+                # Let's look for available methods in client first to avoid errors.
+                # logger.info(f"Client methods: {[m for m in dir(client) if 'balance' in m]}")
+                
+                # We will try getting the balance allowances
+                balance = client.get_balance_allowance(
+                    params=ApiCreds(
+                        api_key=key,
+                        api_secret=secret,
+                        api_passphrase=passphrase
+                    ) 
+                )
+                print(f"\n--- Account Balance ---")
+                print(f"Balance: {balance}")
+                
+            except Exception as e:
+                logger.error(f"Error fetching balance: {e}")
+            return
 
         # 3. Handling Orderbook Request
         if args.book:
