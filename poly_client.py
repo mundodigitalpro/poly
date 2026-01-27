@@ -82,38 +82,34 @@ def main():
         logger.info("Client initialized successfully.")
 
         if args.balance:
-            logger.info("Fetching Account Balance...")
+            logger.info("Fetching Account Info...")
             if not private_key:
-                logger.error("Private Key is required to fetch balance/allowance (and to trade). Please set POLY_PRIVATE_KEY in .env.")
+                logger.error("Private Key is required. Please set POLY_PRIVATE_KEY in .env.")
                 return
 
             try:
-                # Based on documentation/common usage patterns
-                # This returns the collateral (USDC) balance and allowance
-                # NOTE: Polymarket uses a wrapper/proxy, so we check the proxy allowance/balance too usually.
-                # But let's start with basic get_balance_allowance or similar.
-                # If py_clob_client follows standard, it might have get_balance_allowance(params)
-                # Let's try inspecting or using a safe method.
-                # Actually, standard usage is often: client.get_balance_allowance(params=...)
-                # But simpler method might be client.get_collateral_balance() or similar?
-                # Let's inspect `client` methods to be sure or try the most standard usage.
-                # Search result mentioned `account_balance()`.
+                # First, verify authentication works by getting orders
+                orders = client.get_orders()
                 
-                # Let's look for available methods in client first to avoid errors.
-                # logger.info(f"Client methods: {[m for m in dir(client) if 'balance' in m]}")
+                print(f"\n--- Account Status ---")
+                print(f"✅ Authentication: Working")
+                print(f"📊 Open Orders: {len(orders)}")
                 
-                # We will try getting the balance allowances
-                balance = client.get_balance_allowance(
-                    params=BalanceAllowanceParams(
-                        asset_type=AssetType.COLLATERAL,
-                        signature_type=sig_type
-                    )
-                )
-                print(f"\n--- Account Balance ---")
-                print(f"Balance: {balance}")
+                # Try to get trades as well
+                try:
+                    trades = client.get_trades()
+                    print(f"📈 Total Trades: {len(trades) if trades else 0}")
+                except:
+                    pass
+                
+                # Note about balance
+                print(f"\n💡 To check USDC balance, visit:")
+                print(f"   https://polymarket.com/settings")
+                print(f"   Or check on PolygonScan:")
+                print(f"   https://polygonscan.com/address/{funder}")
                 
             except Exception as e:
-                logger.error(f"Error fetching balance: {e}")
+                logger.error(f"Error: {e}")
             return
 
         # 3. Handling Orderbook Request
