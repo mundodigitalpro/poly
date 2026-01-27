@@ -12,6 +12,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 import argparse
+import time
 
 # ... (imports)
 
@@ -21,6 +22,8 @@ def main():
     parser.add_argument("--filter", type=str, help="Filter markets by question text (case-insensitive)")
     parser.add_argument("--limit", type=int, default=10, help="Limit number of results displayed")
     parser.add_argument("--book", type=str, help="Get Orderbook for a specific Token ID")
+    parser.add_argument("--monitor", action="store_true", help="Continuous monitoring (Poll mode)")
+    parser.add_argument("--interval", type=int, default=5, help="Polling interval in seconds")
     args = parser.parse_args()
 
     logger.info("Starting Polymarket Client...")
@@ -62,46 +65,60 @@ def main():
         )
         logger.info("Client initialized successfully.")
 
+        # 3. Handling Orderbook Request
         if args.book:
             token_id = args.book
-            logger.info(f"Fetching Orderbook for Token ID: {token_id}")
-            order_book = client.get_order_book(token_id)
             
-            # Display Bids and Asks
-            print(f"\n--- Order Book for {token_id} ---")
-            
-            try:
-                # [ASKS]
-                print("\n[ASKS] (Sellers - Lowest first)")
-                asks = getattr(order_book, 'asks', [])
-                # Fallback to dict if needed (unlikely based on logs but safe)
-                if not asks and hasattr(order_book, 'to_dict'):
-                     asks = order_book.to_dict().get('asks', [])
+            while True:
+                logger.info(f"Fetching Orderbook for Token ID: {token_id}")
+                try:
+                    order_book = client.get_order_book(token_id)
+                    
+                    # Display Bids and Asks
+                    timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
+                    print(f"\n--- Order Book for {token_id} at {timestamp} ---")
+                    
+                    try:
+                        # [ASKS]
+                        print("\n[ASKS] (Sellers - Lowest first)")
+                        asks = getattr(order_book, 'asks', [])
+                        # Fallback to dict if needed
+                        if not asks and hasattr(order_book, 'to_dict'):
+                             asks = order_book.to_dict().get('asks', [])
+                        
+                        if not asks:
+                            print("  No asks.")
+                        else:
+                            for ask in asks[:5]: 
+                                price = ask.price if hasattr(ask, 'price') else ask.get('price')
+                                size = ask.size if hasattr(ask, 'size') else ask.get('size')
+                                print(f"  Price: {price} | Size: {size}")
+
+                        # [BIDS]
+                        print("\n[BIDS] (Buyers - Highest first)")
+                        bids = getattr(order_book, 'bids', [])
+                        if not bids and hasattr(order_book, 'to_dict'):
+                             bids = order_book.to_dict().get('bids', [])
+
+                        if not bids:
+                            print("  No bids.")
+                        else:
+                            for bid in bids[:5]:
+                                price = bid.price if hasattr(bid, 'price') else bid.get('price')
+                                size = bid.size if hasattr(bid, 'size') else bid.get('size')
+                                print(f"  Price: {price} | Size: {size}")
+
+                    except Exception as e:
+                        logger.error(f"Error parsing orderbook: {e}")
                 
-                if not asks:
-                    print("  No asks.")
-                else:
-                    for ask in asks[:5]: 
-                        price = ask.price if hasattr(ask, 'price') else ask.get('price')
-                        size = ask.size if hasattr(ask, 'size') else ask.get('size')
-                        print(f"  Price: {price} | Size: {size}")
+                except Exception as e:
+                    logger.error(f"Error fetching orderbook: {e}")
 
-                # [BIDS]
-                print("\n[BIDS] (Buyers - Highest first)")
-                bids = getattr(order_book, 'bids', [])
-                if not bids and hasattr(order_book, 'to_dict'):
-                     bids = order_book.to_dict().get('bids', [])
-
-                if not bids:
-                    print("  No bids.")
-                else:
-                    for bid in bids[:5]:
-                        price = bid.price if hasattr(bid, 'price') else bid.get('price')
-                        size = bid.size if hasattr(bid, 'size') else bid.get('size')
-                        print(f"  Price: {price} | Size: {size}")
-
-            except Exception as e:
-                logger.error(f"Error parsing orderbook: {e}")
+                if not args.monitor:
+                    break
+                
+                print(f"\nWaiting {args.interval} seconds...")
+                time.sleep(args.interval)
             
             return
 

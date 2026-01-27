@@ -8,6 +8,11 @@ All notable changes to this project will be documented in this file.
 - **Execution**: Ability to place Limit and Market orders.
 - **Wallet**: Check USDC and CTF balances.
 
+## [0.4.0] - 2026-01-27
+### Added
+- **Polling**: Continuous monitoring loop with `--monitor` flag.
+- **Interval**: Customizable update frequency with `--interval` (default 5s).
+
 ## [0.3.0] - 2026-01-27
 ### Added
 - **Orderbook**: Fetch price depth (bids/asks) for specific Token IDs (`--book`).
