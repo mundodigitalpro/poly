@@ -8,6 +8,12 @@ All notable changes to this project will be documented in this file.
 - **Execution**: Ability to place Limit and Market orders.
 - **Wallet**: Check USDC and CTF balances.
 
+## [0.5.0] - 2026-01-27
+### Added
+- **Balance Check**: Implementation of `--balance` argument to check USDC collateral.
+- **Proxy Support**: Added `POLY_FUNDER_ADDRESS` env var to support Magic Link / Gnosis Safe wallets.
+- **Debug Tools**: Scripts `debug_auth.py`, `generate_keys.py`, and `brute_force_auth.py` for troubleshooting authentication.
+
 ## [0.4.0] - 2026-01-27
 ### Added
 - **Polling**: Continuous monitoring loop with `--monitor` flag.

@@ -2,7 +2,8 @@ import os
 import logging
 from dotenv import load_dotenv
 from py_clob_client.client import ClobClient
-from py_clob_client.clob_types import ApiCreds
+from py_clob_client.client import ClobClient
+from py_clob_client.clob_types import ApiCreds, BalanceAllowanceParams, AssetType
 
 # Load environment variables
 load_dotenv()
@@ -44,9 +45,19 @@ def main():
         logger.warning("POLY_PRIVATE_KEY is not set or is invalid (must start with 0x). Continuing without it (Read-Only mode might be limited).")
         private_key = None
 
+    # Fundere Address (Proxy) for Magic Link / Gnosis Safe users
+    funder = os.getenv("POLY_FUNDER_ADDRESS")
+
     if not all([key, secret, passphrase]):
         logger.error("Missing API credentials in .env file.")
         return
+
+    # Sanitize inputs (remove whitespace)
+    key = key.strip() if key else None
+    secret = secret.strip() if secret else None
+    passphrase = passphrase.strip() if passphrase else None
+    private_key = private_key.strip() if private_key else None
+    funder = funder.strip() if funder else None
 
     try:
         # 2. Initialize Client
@@ -56,13 +67,17 @@ def main():
             api_passphrase=passphrase,
         )
 
+        # Determine signature type
+        # 2 for Gnosis Safe (Magic Link), 0 for EOA (MetaMask)
+        sig_type = 2 if funder else 0
+        
         client = ClobClient(
             host=host,
             key=private_key,
             chain_id=chain_id,
             creds=creds,
-            signature_type=1,  # 1 for EOA (External Owned Account), 2 for Poly Proxy/Gnosis Safe
-            funder=private_key, # Use private key as funder for gasless transactions if supported
+            signature_type=sig_type,
+            funder=funder if funder else private_key, 
         )
         logger.info("Client initialized successfully.")
 
@@ -89,11 +104,10 @@ def main():
                 
                 # We will try getting the balance allowances
                 balance = client.get_balance_allowance(
-                    params=ApiCreds(
-                        api_key=key,
-                        api_secret=secret,
-                        api_passphrase=passphrase
-                    ) 
+                    params=BalanceAllowanceParams(
+                        asset_type=AssetType.COLLATERAL,
+                        signature_type=sig_type
+                    )
                 )
                 print(f"\n--- Account Balance ---")
                 print(f"Balance: {balance}")

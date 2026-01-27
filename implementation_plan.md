@@ -20,7 +20,8 @@ The following features are planned for future iterations:
 - [x] **Polling/Monitoring**: Script loop to check market changes periodically (Implemented `--monitor`).
 
 ## Phase 3: Trading Execution
-- [x] **Balance Checks**: Check USDC balance before trading (Implemented `--balance`).
+- [x] **Balance Checks**: Check USDC balance before trading (Implemented `--balance` & Proxy Support).
+- [ ] **Authentication**: Resolve 401 Unauthorized issues with Proxy Wallets.
 - [ ] **Order Placement**: Implement `buy` and `sell` logic.
 - [ ] **Order Management**: List open orders and cancel them.
 
