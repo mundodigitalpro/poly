@@ -20,6 +20,7 @@ def main():
     parser = argparse.ArgumentParser(description="Polymarket Python Client")
     parser.add_argument("--filter", type=str, help="Filter markets by question text (case-insensitive)")
     parser.add_argument("--limit", type=int, default=10, help="Limit number of results displayed")
+    parser.add_argument("--book", type=str, help="Get Orderbook for a specific Token ID")
     args = parser.parse_args()
 
     logger.info("Starting Polymarket Client...")
@@ -61,7 +62,59 @@ def main():
         )
         logger.info("Client initialized successfully.")
 
-        # 3. Fetch Markets
+        if args.book:
+            token_id = args.book
+            logger.info(f"Fetching Orderbook for Token ID: {token_id}")
+            order_book = client.get_order_book(token_id)
+            
+            # Display Bids and Asks
+            print(f"\n--- Order Book for {token_id} ---")
+            
+            try:
+                # [ASKS]
+                print("\n[ASKS] (Sellers - Lowest first)")
+                asks = getattr(order_book, 'asks', [])
+                # Fallback to dict if needed (unlikely based on logs but safe)
+                if not asks and hasattr(order_book, 'to_dict'):
+                     asks = order_book.to_dict().get('asks', [])
+                
+                if not asks:
+                    print("  No asks.")
+                else:
+                    for ask in asks[:5]: 
+                        price = ask.price if hasattr(ask, 'price') else ask.get('price')
+                        size = ask.size if hasattr(ask, 'size') else ask.get('size')
+                        print(f"  Price: {price} | Size: {size}")
+
+                # [BIDS]
+                print("\n[BIDS] (Buyers - Highest first)")
+                bids = getattr(order_book, 'bids', [])
+                if not bids and hasattr(order_book, 'to_dict'):
+                     bids = order_book.to_dict().get('bids', [])
+
+                if not bids:
+                    print("  No bids.")
+                else:
+                    for bid in bids[:5]:
+                        price = bid.price if hasattr(bid, 'price') else bid.get('price')
+                        size = bid.size if hasattr(bid, 'size') else bid.get('size')
+                        print(f"  Price: {price} | Size: {size}")
+
+            except Exception as e:
+                logger.error(f"Error parsing orderbook: {e}")
+            
+            return
+
+            print("\n[BIDS] (Buyers - Highest first)")
+            bids = order_book.get('bids', [])
+            if not bids:
+                print("  No bids.")
+            for bid in bids[:5]: # Show top 5
+                print(f"  Price: {bid.get('price')} | Size: {bid.get('size')}")
+            
+            return
+
+        # 4. Fetch Markets (Default behavior)
         logger.info("Fetching markets...")
         # using get_sampling_markets to get full metadata (question, etc.)
         resp = client.get_sampling_markets(next_cursor="")
@@ -82,6 +135,10 @@ def main():
                     continue
 
             print(f"- [ID: {market.get('condition_id')}] {question}")
+            # Simplified display of tokens (outcomes)
+            if market.get('tokens'):
+                print(f"  Tokens: {market.get('tokens')}")
+            
             count += 1
             if count >= args.limit:
                 break
