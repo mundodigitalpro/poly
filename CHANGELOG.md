@@ -8,6 +8,11 @@ All notable changes to this project will be documented in this file.
 - **Execution**: Ability to place Limit and Market orders.
 - **Wallet**: Check USDC and CTF balances.
 
+## [0.2.0] - 2026-01-27
+### Added
+- **Market Filtering**: Filter markets by text using `--filter` argument.
+- **Enhanced Data**: Switched to `get_sampling_markets` for full metadata.
+
 ## [0.1.0] - 2026-01-27
 ### Added
 - **Initial Release**: Basic Python client structure.

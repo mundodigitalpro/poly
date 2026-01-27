@@ -15,7 +15,7 @@ Create a Python script to interact with Polymarket. The solution works:
 The following features are planned for future iterations:
 
 ### Phase 2: Enhanced Data & Monitoring
-- [ ] **Market Filtering**: Fetch markets by specific tags or IDs.
+- [x] **Market Filtering**: Fetch markets by specific tags or IDs (Implemented text filtering).
 - [ ] **Price History**: Retrieve orderbook state or recent trades.
 - [ ] **Polling/Monitoring**: Script loop to check market changes periodically.
 
