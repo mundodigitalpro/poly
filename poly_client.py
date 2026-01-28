@@ -68,8 +68,10 @@ def main():
         )
 
         # Determine signature type
-        # 2 for Gnosis Safe (Magic Link), 0 for EOA (MetaMask)
-        sig_type = 2 if funder else 0
+        # 1 for Magic Link (email/Google login)
+        # 0 for EOA (MetaMask/hardware wallet)
+        # 2 for browser wallet proxy (not common)
+        sig_type = 1 if funder else 0
         
         client = ClobClient(
             host=host,
