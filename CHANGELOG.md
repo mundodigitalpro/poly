@@ -2,16 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
-## [0.7.0] - 2026-01-28
-### Fixed
-- **Trading with Magic Link**: Changed `signature_type` from 2 to 1 for Magic Link users
-  - `signature_type=1`: Magic Link / email login (Gmail, etc.)
-  - `signature_type=0`: EOA / MetaMask / hardware wallets
-  - `signature_type=2`: Browser wallet proxy (rare)
-- First successful trade executed! 🎉
-
+## [0.8.0] - 2026-01-28
 ### Added
-- `place_order.py`: Script for placing orders
+- **Autonomous Bot Architecture**: Designed a full plan for a 24/7 VPS trading bot.
+- **Auto-Sell Bot v2**: Created `auto_sell.py` with safety protections (TP/SL, spread alerts, confirmation).
+- **Trading Success**: Executed the first buy and sell orders on the live CLOB API.
+
+### Fixed
+- **Signature Optimization**: Confirmed `signature_type=1` as the correct type for Magic Link email wallets.
+- **Safety**: Prevented accidental "market-price" sales in illiquid markets by adding spread verification.
+
+## [0.7.0] - 2026-01-28
 ### Fixed
 - **Authentication**: Resolved 401 Unauthorized errors for Magic Link users
 - **API Credentials**: Now properly generated using `derive_api_key()` method

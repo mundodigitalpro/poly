@@ -13,20 +13,25 @@ Create a Python script to interact with Polymarket. The solution works:
 - [x] **Market Filtering**: Fetch markets by specific tags or IDs (implemented via `--filter`).
 - [x] **Price History / Orderbook**: Retrieve orderbook state (implemented via `--book`).
 - [x] **Polling/Monitoring**: Script loop to check market changes periodically (implemented via `--monitor`).
-- [x] **Authentication**: Resolved `401 Unauthorized` issues by properly deriving API keys and setting `signature_type=1` for Magic Link.
-- [x] **Initial Trading**: Successfully implemented and tested `buy` logic with `place_order.py`.
-- [x] **Balance/Status Check**: Implemented `--balance` to show account status (orders/trades).
-
 ## Current Focus
-- [ ] **Order Management**: Extend `poly_client.py` with native `buy`, `sell`, and `cancel` commands to replace standalone scripts.
-- [ ] **Validation Improvement**: Refine balance checking to handle specific `Allowance` requirements if possible.
-- [ ] **Refinement**: Clean up diagnostic tools and finalize project structure for production use.
+- [x] **Verification**: Confirmed successful sell order execution.
+- [/] **Autonomous Trading (Phase 4)**: 
+    - [x] Design autonomous architecture (Market Scanner, Position Manager).
+    - [ ] Implement `market_scanner.py` with 0.30-0.70 odds filtering.
+    - [ ] Implement `strategy.py` for dynamic TP/SL.
+    - [ ] Implement `main_bot.py` loop for 24/7 operation.
+    - [ ] VPS Deployment with Docker.
+
+## Roadmap: Autonomous Bot Criteria
+- **Market Selection**: Odds 0.30-0.70, Spread < 10%.
+- **Risk Management**: $1 max per trade, 3-5 concurrent positions, daily loss limit $3.
+- **Capital**: Operating with a $13 pool (preserving $5 safety threshold).
 
 ## Verification Plan
 ### Automated Tests
 - Run `python poly_client.py --balance` to check authentication.
-- Run `python poly_client.py --limit 5` to verify data retrieval.
-- Run `python place_order.py` (test with small amount) to verify trading.
+- Run `python auto_sell.py` to test manual auto-selling with protections.
+- Run autonomous bot in "dry run" mode (to be implemented).
 
 ### Manual Verification
 - Check account status on [Polymarket Portfolio](https://polymarket.com/portfolio) to confirm orders and balances.
