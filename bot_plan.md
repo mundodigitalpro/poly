@@ -405,13 +405,13 @@ Todos estos parámetros deben ser fácilmente ajustables sin modificar código.
 ## ✅ Próximos Pasos - Roadmap de Implementación
 
 ### Fase 0: Preparación (1-2 días)
-1. [ ] Revisar y aprobar este plan actualizado
-2. [ ] Crear estructura de carpetas (`bot/`, `data/`, `logs/`)
-3. [ ] Implementar `config.json` con todos los parámetros
-4. [ ] Implementar `bot/logger.py` (primero, para debugging)
+1. [x] Revisar y aprobar este plan actualizado
+2. [x] Crear estructura de carpetas (`bot/`, `data/`, `logs/`)
+3. [x] Implementar `config.json` con todos los parámetros
+4. [x] Implementar `bot/logger.py` (primero, para debugging)
 
 ### Fase 1: Core Modules (3-4 días)
-5. [ ] Implementar `bot/config.py` (cargar configuración)
+5. [x] Implementar `bot/config.py` (cargar configuración)
 6. [ ] Implementar `bot/position_manager.py`
    - [ ] Cargar/guardar positions.json
    - [ ] Cargar/guardar blacklist.json

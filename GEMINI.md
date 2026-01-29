@@ -39,10 +39,12 @@ This repository is managed by a triad of agent contexts. **Consult these before 
   - 10+ safety protections.
 
 ## Current State (as of 2026-01-29)
-- Basic CLI (`poly_client.py`) is functional for balance, filtering, and orderbook.
-- `auto_sell.py` exists with safety protections.
-- `bot_plan.md` outlines a comprehensive autonomous bot (pending full implementation).
-- `GEMINI.md` created to track agent context.
+- **Phase 0 Review**: Completed and approved.
+- **Project Structure**: Folders `bot/`, `data/`, and `logs/` created.
+- **Logger**: `bot/logger.py` implemented and committed (fix: capture debug in file).
+- **Configuration**: `config.json` and `bot/config.py` (Task #5) implemented.
+- Basic CLI (`poly_client.py`) functional.
+- Autonomous Bot implementation following `bot_plan.md` has started.
 
 ## Useful Commands
 - `python poly_client.py --balance`
