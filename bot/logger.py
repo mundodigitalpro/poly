@@ -9,7 +9,6 @@ Provides professional logging with:
 """
 
 import logging
-import os
 from datetime import datetime
 from pathlib import Path
 
@@ -26,10 +25,13 @@ class BotLogger:
             log_level: Minimum log level (DEBUG, INFO, WARN, ERROR)
         """
         self.logger = logging.getLogger(name)
-        self.logger.setLevel(self._get_log_level(log_level))
+        # Capture all levels; handlers control their own thresholds.
+        self.logger.setLevel(logging.DEBUG)
 
         # Remove existing handlers to avoid duplicates
         if self.logger.handlers:
+            for handler in self.logger.handlers:
+                handler.close()
             self.logger.handlers.clear()
 
         # Create logs directory if it doesn't exist
@@ -131,7 +133,7 @@ if __name__ == "__main__":
 
     logger.section("Bot Started")
     logger.info("This is an info message")
-    logger.debug("This is a debug message (only in file)")
+    logger.debug("This is a debug message (file + console at DEBUG)")
     logger.warn("This is a warning message")
     logger.error("This is an error message")
     logger.separator()
