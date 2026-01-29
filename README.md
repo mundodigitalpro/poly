@@ -4,7 +4,8 @@ Cliente Python para trading en Polymarket via API.
 
 ## ✅ Estado
 
-**Operativo** - Trading funcionando con Magic Link ✅
+**Operativo** - Trading funcionando con Magic Link ✅  
+**Bot Autónomo (Beta v0.10.0)** - Fase 2 (Integración y Testing) completada ✅
 
 ## 🚀 Inicio Rápido
 
@@ -60,6 +61,12 @@ python poly_client.py --book <TOKEN_ID>
 
 # Monitoreo en tiempo real
 python poly_client.py --book <TOKEN_ID> --monitor --interval 5
+
+# Bot autónomo (single loop / dry run)
+python main_bot.py --once
+
+# Bot autónomo (loop continuo)
+python main_bot.py
 ```
 
 ## 📈 Trading
@@ -110,7 +117,7 @@ Plan completo en `bot_plan.md` para un bot de trading 24/7:
 - Persistencia de datos y stats tracking
 - Rollout por fases: Dry run → Paper → Micro ($0.25) → Normal ($1.00)
 
-**Estado**: Implementado (Beta) ✅ | En fase de pruebas (Dry Run) 🔄
+**Estado**: Implementado (Beta v0.10.0) ✅ | Fase 2 completada ✅ | Extended Dry Run en progreso 🔄
 
 Para iniciar el bot en modo simulación:
 ```bash
@@ -128,15 +135,34 @@ poly/
 ├── poly_client.py              # Cliente principal
 ├── place_order.py              # Script para órdenes manuales
 ├── auto_sell.py                # Bot de auto-venta con protecciones
+├── main_bot.py                 # Bot autónomo (loop principal)
 ├── generate_user_api_keys.py   # Genera API credentials
 ├── verify_wallet.py            # Verifica wallet
+├── diagnose_config.py          # Diagnostica .env
+├── test_all_sig_types.py        # Prueba signature_type 0/1/2
+├── config.json                 # Configuración del bot
+├── bot/                        # Módulos del bot
+├── data/                       # Datos runtime (positions, blacklist, stats)
+├── logs/                       # Logs diarios
+├── tests/                      # Tests unitarios (pytest)
 ├── bot_plan.md                 # Plan detallado del bot autónomo
+├── implementation_plan.md      # Plan general de desarrollo
+├── AGENTS.md                   # Guía para contribuciones
 ├── CLAUDE.md                   # Guía para Claude Code
 ├── GEMINI.md                   # Memoria para Gemini CLI
 ├── .env                        # Credenciales (NO commitear)
 ├── .env.example                # Plantilla
 ├── Dockerfile                  # Docker
 └── docker-compose.yml          # Docker Compose
+```
+
+## ✅ Testing
+
+Tests unitarios con pytest (estrategia y position manager):
+
+```bash
+pip install pytest
+python -m pytest
 ```
 
 ## 🐳 Docker

@@ -39,18 +39,22 @@ This repository is managed by a triad of agent contexts. **Consult these before 
   - 10+ safety protections.
 
 ## Current State (as of 2026-01-29)
+- **Version**: 0.10.0 (Beta)
 - **Phase 0 (Prep)**: Completed.
 - **Phase 1 (Core Modules)**: COMPLETED.
 - **Phase 2 (Integration & Testing)**: COMPLETED.
-  - `main_bot.py`: Implemented and verified via dry run.
-  - **Unit Tests**: 6 tests passed (strategy, position manager).
-  - **Optimization**: Scanner optimized to avoid rate limits (20 markets/loop).
+  - `main_bot.py`: Implemented and verified via dry run (`python main_bot.py --once`).
+  - **Unit Tests**: `tests/` added (strategy, position manager).
+  - **Optimization**: MarketScanner includes client-side rate limiting to avoid API throttling.
 - **Next Step**: Phase 3 (Extended Dry Run).
-  - Task #13: Run bot for 7 days in dry-run mode.
+  - Task #13: Run bot for 7 days in dry-run mode and collect metrics.
 - Basic CLI (`poly_client.py`) functional.
-- Autonomous Bot is fully operational in dry-run mode.
+- Autonomous Bot is operational in dry-run mode.
 
 ## Useful Commands
 - `python poly_client.py --balance`
 - `python poly_client.py --book <TOKEN_ID> --monitor`
 - `python generate_user_api_keys.py` (Fixes 401 errors)
+- `python main_bot.py --once` (single dry-run loop)
+- `python main_bot.py` (continuous dry run)
+- `python -m pytest` (requires `pip install pytest`)
