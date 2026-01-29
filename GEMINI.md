@@ -15,6 +15,12 @@ A Python client and autonomous trading bot for Polymarket using `py-clob-client`
 - **Repo**: `/home/josejordan/poly`
 - **Key Files**: `poly_client.py` (CLI), `bot_plan.md` (Bot Design), `place_order.py` (Manual Trading).
 
+## Agent Ecosystem
+This repository is managed by a triad of agent contexts. **Consult these before acting**:
+1. **CODEX (`AGENTS.md`)**: The **Legislator**. Defines the "Law" of the repo: project structure, coding standards, and build/test commands.
+2. **CLAUDE (`CLAUDE.md`)**: The **Architect**. Holds deep technical knowledge: Auth flows (`signature_type`), API quirks, and the `bot_plan.md` architecture.
+3. **GEMINI (`GEMINI.md`)**: The **Operator** (You). Maintains active execution context, tracks progress, and implements solutions adhering to CODEX's rules and CLAUDE's designs.
+
 ## Authentication & Configuration
 - **Magic Link (Gmail)**: Uses `signature_type=1`. Requires `POLY_FUNDER_ADDRESS` + `POLY_PRIVATE_KEY`.
 - **EOA (MetaMask)**: Uses `signature_type=0`. Requires only `POLY_PRIVATE_KEY`.

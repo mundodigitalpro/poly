@@ -39,6 +39,12 @@ When contributing, consult the relevant memory file for your needs. Maintain con
 - No automated test suite is configured. Use `python test_all_sig_types.py` for auth verification and run CLI flows manually with small amounts.
 - When touching auth or signing code, validate both Magic Link (`signature_type=1`) and EOA (`signature_type=0`) paths.
 
+## Multi-Agent Collaboration
+- Three agent memories guide work: `AGENTS.md` (Codex) for process/quality gates, `GEMINI.md` for current state and quick commands, and `CLAUDE.md` for architecture/auth details.
+- Update `GEMINI.md` when project status changes (features completed, blockers, or verification notes).
+- Update `AGENTS.md` when workflows, conventions, or contributor guidance change.
+- Update `CLAUDE.md` when authentication patterns or core component behavior changes.
+
 ## Authentication & Signature Types
 - Magic Link (email/Gmail) uses `signature_type=1` and requires `POLY_FUNDER_ADDRESS`; EOA wallets use `signature_type=0` without the funder address. `signature_type=2` is rare.
 - `poly_client.py` auto-detects the signature type based on `POLY_FUNDER_ADDRESS`, but `place_order.py` may be hardcoded—keep these consistent.

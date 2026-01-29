@@ -1,0 +1,2 @@
+# This file ensures the data/ directory is tracked by git
+# JSON files (positions.json, blacklist.json, stats.json) will be created at runtime

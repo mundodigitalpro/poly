@@ -1,0 +1,63 @@
+{
+  "capital": {
+    "total": 18.0,
+    "safety_reserve": 5.0,
+    "max_trade_size": 1.0,
+    "start_small": 0.25,
+    "scale_after_trades": 30
+  },
+  "risk": {
+    "max_positions": 5,
+    "cooldown_seconds": 300,
+    "daily_loss_limit": 3.0,
+    "min_sell_price_ratio": 0.5
+  },
+  "market_filters": {
+    "min_odds": 0.30,
+    "max_odds": 0.70,
+    "max_spread_percent": 5.0,
+    "min_volume_usd": 100.0,
+    "max_days_to_resolve": 30
+  },
+  "strategy": {
+    "tp_sl_by_odds": {
+      "0.30-0.40": {
+        "tp_percent": 25,
+        "sl_percent": 15
+      },
+      "0.40-0.50": {
+        "tp_percent": 20,
+        "sl_percent": 12
+      },
+      "0.50-0.60": {
+        "tp_percent": 15,
+        "sl_percent": 10
+      },
+      "0.60-0.70": {
+        "tp_percent": 12,
+        "sl_percent": 8
+      }
+    },
+    "market_score_weights": {
+      "spread": 40,
+      "volume": 30,
+      "odds_distance": 20,
+      "time_to_resolve": 10
+    }
+  },
+  "blacklist": {
+    "duration_days": 3,
+    "max_attempts": 2
+  },
+  "bot": {
+    "loop_interval_seconds": 120,
+    "order_timeout_seconds": 30,
+    "dry_run": true,
+    "log_level": "INFO"
+  },
+  "api": {
+    "max_calls_per_minute": 20,
+    "retry_attempts": 3,
+    "retry_backoff_seconds": 5
+  }
+}
