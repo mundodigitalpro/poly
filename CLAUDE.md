@@ -2,6 +2,18 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Multi-Agent Team
+
+This repository uses multiple AI agents with specialized focuses:
+- **CLAUDE.md** (this file): Technical architecture, implementation patterns, and deep-dive into critical flows
+- **AGENTS.md** (Codex): Process guidelines, commit standards, testing workflows, and coding conventions
+- **GEMINI.md** (Gemini): Current state tracking, quick command reference, and contextual memory
+
+When making changes, ensure consistency across all three memory files. Each agent brings unique value:
+- Use **AGENTS.md** for procedural questions (how to test, commit format, style guide)
+- Use **GEMINI.md** for current state (what's implemented, what's pending, quick commands)
+- Use **CLAUDE.md** for technical questions (how auth works, why signature_type matters, bot architecture)
+
 ## Project Overview
 
 Polymarket trading client and autonomous bot written in Python. The project enables trading on Polymarket via API using the `py-clob-client` library, supporting both Magic Link (email/Gmail) and MetaMask authentication methods.

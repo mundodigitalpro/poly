@@ -46,7 +46,7 @@ python generate_user_api_keys.py
 ## 📋 Comandos
 
 ```bash
-# Ver estado de cuenta
+# Ver estado de cuenta (orders/trades)
 python poly_client.py --balance
 
 # Listar mercados
@@ -62,7 +62,7 @@ python poly_client.py --book <TOKEN_ID>
 python poly_client.py --book <TOKEN_ID> --monitor --interval 5
 ```
 
-## � Trading
+## 📈 Trading
 
 Edita `place_order.py` con el mercado y precio deseado:
 
@@ -78,6 +78,11 @@ python place_order.py
 | `signature_type=0` | MetaMask / Hardware wallets (EOA) |
 | `signature_type=2` | Browser wallet proxy (raro) |
 
+Notas rápidas:
+- Magic Link requiere `POLY_FUNDER_ADDRESS` y usa `signature_type=1`.
+- EOA/MetaMask no usa funder y usa `signature_type=0`.
+- `poly_client.py` auto-detecta, pero en `place_order.py` verifica el `signature_type`.
+
 ## 🔧 Troubleshooting
 
 ### Error 401: Unauthorized
@@ -92,6 +97,7 @@ Verifica que usas `signature_type=1` para Magic Link.
 ```bash
 python verify_wallet.py
 python diagnose_config.py
+python test_all_sig_types.py
 ```
 
 ## 🤖 Bot Autónomo (En Desarrollo)
@@ -106,7 +112,7 @@ Plan completo en `bot_plan.md` para un bot de trading 24/7:
 
 **Estado**: Diseño completo ✅ | Implementación pendiente
 
-Ver también: `CLAUDE.md` para contexto técnico del proyecto.
+Ver también: `CLAUDE.md` y `GEMINI.md` para contexto técnico del proyecto.
 
 ## 📁 Estructura
 
@@ -119,6 +125,7 @@ poly/
 ├── verify_wallet.py            # Verifica wallet
 ├── bot_plan.md                 # Plan detallado del bot autónomo
 ├── CLAUDE.md                   # Guía para Claude Code
+├── GEMINI.md                   # Memoria para Gemini CLI
 ├── .env                        # Credenciales (NO commitear)
 ├── .env.example                # Plantilla
 ├── Dockerfile                  # Docker

@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.9.1] - 2026-01-29
+### Added
+- **Contributor Guide**: Added `AGENTS.md` with repository guidelines for contributors.
+
+### Changed
+- **README**: Clarified `--balance` output, added signature type notes, expanded troubleshooting commands, and updated the project structure list.
+
 ## [0.9.0] - 2026-01-29
 ### Enhanced
 - **Autonomous Bot Plan**: Major upgrade to `bot_plan.md` with production-ready architecture
@@ -24,6 +31,7 @@ All notable changes to this project will be documented in this file.
   - Authentication flow and signature type patterns
   - Core architecture and component descriptions
   - Critical implementation details and troubleshooting patterns
+- **GEMINI.md**: Persistent memory and context for Gemini CLI agent integration
 
 ## [0.8.0] - 2026-01-28
 ### Added

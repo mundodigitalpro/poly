@@ -1,0 +1,44 @@
+# Gemini CLI Context Memory
+
+This file serves as the long-term memory for the Gemini CLI agent working on the Polymarket Python Client project.
+
+## Multi-Agent Team Setup
+Three AI agents collaborate on this project:
+- **GEMINI.md** (this file): Current state tracking, quick commands, contextual memory.
+- **AGENTS.md** (Codex): Process guidelines, commit/PR standards, testing workflows.
+- **CLAUDE.md** (Claude): Technical architecture, auth details, implementation patterns.
+
+**Coordination**: Keep state updates here; refer to AGENTS.md for "how to", CLAUDE.md for "how it works".
+
+## Project Overview
+A Python client and autonomous trading bot for Polymarket using `py-clob-client`.
+- **Repo**: `/home/josejordan/poly`
+- **Key Files**: `poly_client.py` (CLI), `bot_plan.md` (Bot Design), `place_order.py` (Manual Trading).
+
+## Authentication & Configuration
+- **Magic Link (Gmail)**: Uses `signature_type=1`. Requires `POLY_FUNDER_ADDRESS` + `POLY_PRIVATE_KEY`.
+- **EOA (MetaMask)**: Uses `signature_type=0`. Requires only `POLY_PRIVATE_KEY`.
+- **Credentials**: Managed via `.env` (never commit!). Generate with `python generate_user_api_keys.py`.
+
+## Development Guidelines (from AGENTS.md & CLAUDE.md)
+- **Style**: Python 4-space indent, snake_case.
+- **Commits**: Conventional Commits (feat, fix, docs).
+- **Safety**: 
+  - Never commit secrets.
+  - Verify `signature_type` matches wallet.
+  - Test with small amounts.
+- **Bot Plan**:
+  - Located in `bot_plan.md`.
+  - Phased rollout: Dry run -> Paper -> Micro -> Normal.
+  - 10+ safety protections.
+
+## Current State (as of 2026-01-29)
+- Basic CLI (`poly_client.py`) is functional for balance, filtering, and orderbook.
+- `auto_sell.py` exists with safety protections.
+- `bot_plan.md` outlines a comprehensive autonomous bot (pending full implementation).
+- `GEMINI.md` created to track agent context.
+
+## Useful Commands
+- `python poly_client.py --balance`
+- `python poly_client.py --book <TOKEN_ID> --monitor`
+- `python generate_user_api_keys.py` (Fixes 401 errors)
