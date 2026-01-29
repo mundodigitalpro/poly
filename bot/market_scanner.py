@@ -34,7 +34,7 @@ class MarketScanner:
         self.min_call_interval = 60.0 / max(1, self.max_calls_per_minute)
         self._last_call_ts = 0.0
 
-    def scan_markets(self, max_markets: int = 200) -> List[Dict[str, Any]]:
+    def scan_markets(self, max_markets: int = 20) -> List[Dict[str, Any]]:
         """
         Scan markets and return ranked candidates.
 
@@ -47,7 +47,9 @@ class MarketScanner:
         markets = self._fetch_markets(max_markets)
         candidates: List[Dict[str, Any]] = []
 
-        for market in markets:
+        for i, market in enumerate(markets):
+            if i % 5 == 0:
+                self.logger.info(f"Scanning market {i+1}/{len(markets)}...")
             try:
                 candidate = self._analyze_market(market)
                 if candidate:
@@ -58,7 +60,7 @@ class MarketScanner:
         candidates.sort(key=lambda c: c["score"], reverse=True)
         return candidates
 
-    def pick_best_candidate(self, max_markets: int = 200) -> Optional[Dict[str, Any]]:
+    def pick_best_candidate(self, max_markets: int = 20) -> Optional[Dict[str, Any]]:
         """Return the best candidate market or None."""
         candidates = self.scan_markets(max_markets=max_markets)
         return candidates[0] if candidates else None

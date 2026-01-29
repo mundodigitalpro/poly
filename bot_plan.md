@@ -412,25 +412,26 @@ Todos estos parámetros deben ser fácilmente ajustables sin modificar código.
 
 ### Fase 1: Core Modules (3-4 días)
 5. [x] Implementar `bot/config.py` (cargar configuración)
-6. [ ] Implementar `bot/position_manager.py`
-   - [ ] Cargar/guardar positions.json
-   - [ ] Cargar/guardar blacklist.json
-   - [ ] Reconciliar posiciones
-7. [ ] Implementar `bot/strategy.py`
-   - [ ] Calcular TP/SL dinámico
-   - [ ] Calcular score de mercados
-8. [ ] Implementar `bot/market_scanner.py`
+6. [x] Implementar `bot/position_manager.py`
+   - [x] Cargar/guardar positions.json
+   - [x] Cargar/guardar blacklist.json
+   - [x] Reconciliar posiciones
+7. [x] Implementar `bot/strategy.py`
+   - [x] Calcular TP/SL dinámico
+   - [x] Calcular score de mercados
+8. [x] Implementar `bot/market_scanner.py`
    - [ ] Filtrar mercados por criterios
    - [ ] Rankear y seleccionar mejor candidato
-9. [ ] Implementar `bot/trader.py`
+9. [x] Implementar `bot/trader.py`
    - [ ] Ejecutar órdenes
    - [ ] Manejar fills parciales
    - [ ] Verificar liquidez
 
 ### Fase 2: Integración y Dry Run (2-3 días)
-10. [ ] Implementar `main_bot.py` con loop principal
-11. [ ] Implementar modo `DRY_RUN = True`
-12. [ ] Testing unitario de cada módulo
+10. [x] Implementar `main_bot.py` con loop principal
+11. [x] Implementar modo `DRY_RUN = True`
+12. [x] Testing unitario de cada módulo
+13. [ ] **CRÍTICO**: Correr 7 días en modo dry run
 13. [ ] **CRÍTICO**: Correr 7 días en modo dry run
     - [ ] Verificar que loguea correctamente
     - [ ] Verificar que selecciona mercados apropiados

@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.10.0] - 2026-01-29
+### Added
+- **Autonomous Bot Beta**: Complete implementation of the autonomous trading bot (dry-run ready).
+  - **Core Modules**: `market_scanner`, `strategy`, `position_manager`, `trader`, `config`, `logger`.
+  - **Main Loop**: `main_bot.py` integrated with rate limiting and error handling.
+  - **Testing**: Added `tests/` with unit tests for strategy and position management.
+  - **Optimization**: Market scanner optimized to fetch markets in batches to respect API limits.
+- **Commands**: Added `python main_bot.py --once` for single-loop execution.
+
 ## [0.9.1] - 2026-01-29
 ### Added
 - **Contributor Guide**: Added `AGENTS.md` with repository guidelines for contributors.

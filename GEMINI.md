@@ -39,12 +39,16 @@ This repository is managed by a triad of agent contexts. **Consult these before 
   - 10+ safety protections.
 
 ## Current State (as of 2026-01-29)
-- **Phase 0 Review**: Completed and approved.
-- **Project Structure**: Folders `bot/`, `data/`, and `logs/` created.
-- **Logger**: `bot/logger.py` implemented and committed (fix: capture debug in file).
-- **Configuration**: `config.json` and `bot/config.py` (Task #5) implemented.
+- **Phase 0 (Prep)**: Completed.
+- **Phase 1 (Core Modules)**: COMPLETED.
+- **Phase 2 (Integration & Testing)**: COMPLETED.
+  - `main_bot.py`: Implemented and verified via dry run.
+  - **Unit Tests**: 6 tests passed (strategy, position manager).
+  - **Optimization**: Scanner optimized to avoid rate limits (20 markets/loop).
+- **Next Step**: Phase 3 (Extended Dry Run).
+  - Task #13: Run bot for 7 days in dry-run mode.
 - Basic CLI (`poly_client.py`) functional.
-- Autonomous Bot implementation following `bot_plan.md` has started.
+- Autonomous Bot is fully operational in dry-run mode.
 
 ## Useful Commands
 - `python poly_client.py --balance`

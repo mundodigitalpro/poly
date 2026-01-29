@@ -110,7 +110,14 @@ Plan completo en `bot_plan.md` para un bot de trading 24/7:
 - Persistencia de datos y stats tracking
 - Rollout por fases: Dry run → Paper → Micro ($0.25) → Normal ($1.00)
 
-**Estado**: Diseño completo ✅ | Implementación pendiente
+**Estado**: Implementado (Beta) ✅ | En fase de pruebas (Dry Run) 🔄
+
+Para iniciar el bot en modo simulación:
+```bash
+python main_bot.py
+# O para una sola ejecución:
+python main_bot.py --once
+```
 
 Ver también: `CLAUDE.md` y `GEMINI.md` para contexto técnico del proyecto.
 
