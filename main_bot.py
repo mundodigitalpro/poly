@@ -1,0 +1,371 @@
+#!/usr/bin/env python3
+"""
+Main loop for the Polymarket autonomous trading bot.
+"""
+
+import argparse
+import os
+import time
+from datetime import datetime
+from typing import Optional, Tuple
+
+from dotenv import load_dotenv
+from py_clob_client.client import ClobClient
+from py_clob_client.clob_types import ApiCreds, BalanceAllowanceParams, AssetType
+
+from bot.config import load_bot_config
+from bot.logger import get_logger
+from bot.market_scanner import MarketScanner
+from bot.position_manager import Position, PositionManager
+from bot.strategy import TradingStrategy
+from bot.trader import BotTrader, TradeFill
+
+
+def _best_bid_ask(order_book) -> Tuple[float, float]:
+    """Extract best bid and ask from an order book object."""
+    bids = getattr(order_book, "bids", None)
+    asks = getattr(order_book, "asks", None)
+    if (bids is None or asks is None) and hasattr(order_book, "to_dict"):
+        book_dict = order_book.to_dict()
+        bids = book_dict.get("bids", [])
+        asks = book_dict.get("asks", [])
+
+    best_bid = _extract_price(bids)
+    best_ask = _extract_price(asks)
+    return best_bid, best_ask
+
+
+def _extract_price(orders, default: float = 0.0) -> float:
+    if not orders:
+        return default
+    top = orders[0]
+    if hasattr(top, "price"):
+        return float(top.price)
+    if isinstance(top, dict) and "price" in top:
+        return float(top["price"])
+    return default
+
+
+def _derive_funder(private_key: str) -> Optional[str]:
+    """Derive wallet address from private key for EOA usage."""
+    try:
+        from eth_account import Account
+    except ImportError as exc:
+        raise RuntimeError(
+            "eth_account is required to derive wallet address for EOA wallets."
+        ) from exc
+    return Account.from_key(private_key).address
+
+
+def _fetch_balance(client, logger) -> Optional[float]:
+    """Attempt to fetch collateral balance; returns None if unavailable."""
+    try:
+        balance = client.get_balance_allowance(
+            params=BalanceAllowanceParams(asset_type=AssetType.COLLATERAL)
+        )
+        if hasattr(balance, "balance"):
+            return float(balance.balance)
+        if isinstance(balance, dict):
+            for key in ("balance", "available", "allowance", "collateral"):
+                if key in balance:
+                    return float(balance[key])
+    except Exception as exc:
+        logger.warn(f"Balance fetch failed, using config capital: {exc}")
+    return None
+
+
+def _init_client(logger):
+    """Initialize ClobClient from .env."""
+    load_dotenv()
+
+    host = "https://clob.polymarket.com"
+    chain_id = 137
+    private_key = os.getenv("POLY_PRIVATE_KEY")
+    api_key = os.getenv("POLY_API_KEY")
+    api_secret = os.getenv("POLY_API_SECRET")
+    api_passphrase = os.getenv("POLY_API_PASSPHRASE")
+    funder = os.getenv("POLY_FUNDER_ADDRESS")
+
+    if not private_key or not api_key or not api_secret or not api_passphrase:
+        raise RuntimeError("Missing required POLY_* credentials in .env")
+
+    private_key = private_key.strip()
+    api_key = api_key.strip()
+    api_secret = api_secret.strip()
+    api_passphrase = api_passphrase.strip()
+    funder = funder.strip() if funder else None
+
+    sig_type = 1 if funder else 0
+    if not funder:
+        funder = _derive_funder(private_key)
+
+    creds = ApiCreds(
+        api_key=api_key,
+        api_secret=api_secret,
+        api_passphrase=api_passphrase,
+    )
+
+    logger.info(f"Initializing CLOB client (sig_type={sig_type})")
+    client = ClobClient(
+        host=host,
+        chain_id=chain_id,
+        key=private_key,
+        creds=creds,
+        signature_type=sig_type,
+        funder=funder,
+    )
+    return client
+
+
+def _update_positions(
+    client,
+    logger,
+    position_manager: PositionManager,
+    trader: BotTrader,
+    strategy: TradingStrategy,
+    blacklist_cfg: dict,
+):
+    """Check open positions for TP/SL conditions."""
+    positions = position_manager.get_all_positions()
+    if not positions:
+        return
+
+    for position in positions:
+        try:
+            book = client.get_order_book(position.token_id)
+            best_bid, best_ask = _best_bid_ask(book)
+        except Exception as exc:
+            logger.warn(f"Orderbook error for {position.token_id[:8]}...: {exc}")
+            continue
+
+        if best_bid <= 0:
+            logger.warn(f"No bids for {position.token_id[:8]}..., skipping.")
+            continue
+
+        action = None
+        if best_bid >= position.tp:
+            action = "take_profit"
+        elif best_bid <= position.sl:
+            action = "stop_loss"
+
+        if not action:
+            logger.info(
+                f"Position {position.token_id[:8]}... price={best_bid:.4f} "
+                f"tp={position.tp:.4f} sl={position.sl:.4f}"
+            )
+            continue
+
+        logger.info(
+            f"{action.upper()} for {position.token_id[:8]}... "
+            f"bid={best_bid:.4f}"
+        )
+
+        try:
+            fill = trader.execute_sell(
+                token_id=position.token_id,
+                price=best_bid,
+                size=position.filled_size,
+                entry_price=position.entry_price,
+            )
+        except Exception as exc:
+            logger.error(f"Sell failed for {position.token_id[:8]}...: {exc}")
+            continue
+
+        exit_time = datetime.utcnow().isoformat()
+        odds_range = strategy.get_odds_range(position.entry_price)
+        position_manager.record_trade(
+            entry_price=position.entry_price,
+            exit_price=fill.avg_price,
+            size=fill.filled_size,
+            fees=fill.fees_paid,
+            entry_time=position.entry_time,
+            exit_time=exit_time,
+            odds_range=odds_range,
+        )
+
+        if action == "stop_loss":
+            duration = blacklist_cfg.get("duration_days", 3)
+            max_attempts = blacklist_cfg.get("max_attempts", 2)
+            position_manager.add_to_blacklist(
+                position.token_id, "stop_loss", duration, max_attempts
+            )
+
+        position_manager.remove_position(position.token_id)
+        logger.info(
+            f"Position closed {position.token_id[:8]}... "
+            f"size={fill.filled_size} @ {fill.avg_price:.4f}"
+        )
+
+
+def _can_open_new_position(
+    logger,
+    position_manager: PositionManager,
+    config,
+    last_buy_ts: float,
+) -> Tuple[bool, str]:
+    """Check risk constraints before opening a new trade."""
+    max_positions = config.get("risk.max_positions", 5)
+    cooldown = config.get("risk.cooldown_seconds", 300)
+    daily_loss_limit = config.get("risk.daily_loss_limit", 3.0)
+
+    if position_manager.position_count() >= max_positions:
+        return False, "max_positions reached"
+
+    if time.time() - last_buy_ts < cooldown:
+        return False, "cooldown active"
+
+    daily_pnl = position_manager.get_daily_pnl()
+    if daily_pnl <= -abs(daily_loss_limit):
+        return False, "daily loss limit reached"
+
+    return True, "ok"
+
+
+def _place_new_trade(
+    client,
+    logger,
+    scanner: MarketScanner,
+    trader: BotTrader,
+    position_manager: PositionManager,
+    strategy: TradingStrategy,
+    config,
+) -> Optional[TradeFill]:
+    """Scan markets and place a new trade if a candidate exists."""
+    candidate = scanner.pick_best_candidate()
+    if not candidate:
+        logger.info("No suitable market candidate found.")
+        return None
+
+    price = candidate["best_ask"]
+    available_capital = _calculate_available_capital(config, position_manager, client, logger)
+    max_trade_size = config.get("capital.max_trade_size", 1.0)
+    max_positions = config.get("risk.max_positions", 5)
+
+    size_usd = strategy.calculate_position_size(
+        available_capital,
+        max_trade_size,
+        position_manager.position_count(),
+        max_positions,
+    )
+    if size_usd <= 0:
+        logger.info("No available capital for new trade.")
+        return None
+
+    size_shares = round(size_usd / price, 4)
+    if size_shares <= 0:
+        logger.info("Calculated size too small; skipping trade.")
+        return None
+
+    tp, sl = strategy.calculate_tp_sl(price)
+    logger.info(
+        f"New candidate score={candidate['score']} odds={candidate['odds']} "
+        f"spread={candidate['spread_percent']}% volume={candidate['volume_usd']}"
+    )
+    logger.info(
+        f"Placing BUY {size_shares} @ {price:.4f} "
+        f"TP={tp:.4f} SL={sl:.4f}"
+    )
+
+    fill = trader.execute_buy(
+        token_id=candidate["token_id"],
+        price=price,
+        size=size_shares,
+    )
+
+    entry_time = datetime.utcnow().isoformat()
+    position = Position(
+        token_id=candidate["token_id"],
+        entry_price=fill.avg_price,
+        size=size_shares,
+        filled_size=fill.filled_size,
+        entry_time=entry_time,
+        tp=tp,
+        sl=sl,
+        fees_paid=fill.fees_paid,
+        order_id=fill.order_id,
+    )
+    position_manager.add_position(position)
+    logger.info(
+        f"Position opened {candidate['token_id'][:8]}... "
+        f"size={fill.filled_size} @ {fill.avg_price:.4f}"
+    )
+    return fill
+
+
+def _calculate_available_capital(config, position_manager, client, logger) -> float:
+    """Compute available capital considering safety reserve and open positions."""
+    total = config.get("capital.total", 0.0)
+    safety = config.get("capital.safety_reserve", 0.0)
+    committed = sum(
+        pos.filled_size * pos.entry_price for pos in position_manager.get_all_positions()
+    )
+    available = max(0.0, total - safety - committed)
+
+    real_balance = _fetch_balance(client, logger)
+    if real_balance is not None:
+        available = min(available, real_balance - safety)
+
+    return max(0.0, available)
+
+
+def run_loop():
+    parser = argparse.ArgumentParser(description="Polymarket Autonomous Bot")
+    parser.add_argument("--once", action="store_true", help="Run a single loop")
+    args = parser.parse_args()
+
+    config = load_bot_config()
+    logger = get_logger("PolyBot", config.log_level)
+
+    client = _init_client(logger)
+    position_manager = PositionManager()
+    strategy = TradingStrategy(config)
+    scanner = MarketScanner(client, config, logger, position_manager, strategy)
+    trader = BotTrader(client, config, logger)
+
+    loop_interval = config.get("bot.loop_interval_seconds", 120)
+    blacklist_cfg = config.get("blacklist", {})
+
+    last_buy_ts = 0.0
+
+    logger.section("BOT STARTED")
+
+    while True:
+        logger.info("Loop start")
+        position_manager.clean_blacklist()
+
+        _update_positions(
+            client,
+            logger,
+            position_manager,
+            trader,
+            strategy,
+            blacklist_cfg,
+        )
+
+        can_trade, reason = _can_open_new_position(
+            logger, position_manager, config, last_buy_ts
+        )
+        if not can_trade:
+            logger.info(f"Skipping new trade: {reason}")
+        else:
+            fill = _place_new_trade(
+                client,
+                logger,
+                scanner,
+                trader,
+                position_manager,
+                strategy,
+                config,
+            )
+            if fill:
+                last_buy_ts = time.time()
+
+        if args.once:
+            break
+
+        logger.info(f"Sleeping {loop_interval}s")
+        time.sleep(loop_interval)
+
+
+if __name__ == "__main__":
+    run_loop()
