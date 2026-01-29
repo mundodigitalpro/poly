@@ -2,6 +2,29 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.9.0] - 2026-01-29
+### Enhanced
+- **Autonomous Bot Plan**: Major upgrade to `bot_plan.md` with production-ready architecture
+  - Market selection: Tightened spread filter from 10% to 5% for small trades
+  - Added market resolution timeframe filter (<30 days) to avoid long-term capital lockup
+  - Implemented weighted scoring algorithm for market ranking
+  - Position persistence via `positions.json`, `blacklist.json`, `stats.json`
+  - Temporal blacklist system (3 days, max 2 attempts) replacing permanent blocks
+  - Partial fill handling for incomplete order executions
+  - Real balance verification via API each loop
+  - Fee calculations integrated into TP/SL targets
+  - Comprehensive stats tracking (win rate, profit factor, Sharpe ratio, etc.)
+  - Daily dashboard for monitoring bot performance
+  - Phased rollout: Dry run → Paper trading → Micro ($0.25) → Normal ($1.00)
+  - 10 safety protections including rate limiting and error handling
+  - Detailed `config.json` structure with all configurable parameters
+
+### Added
+- **CLAUDE.md**: Documentation for future Claude Code instances
+  - Authentication flow and signature type patterns
+  - Core architecture and component descriptions
+  - Critical implementation details and troubleshooting patterns
+
 ## [0.8.0] - 2026-01-28
 ### Added
 - **Autonomous Bot Architecture**: Designed a full plan for a 24/7 VPS trading bot.

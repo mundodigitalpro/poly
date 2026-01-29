@@ -94,14 +94,31 @@ python verify_wallet.py
 python diagnose_config.py
 ```
 
+## 🤖 Bot Autónomo (En Desarrollo)
+
+Plan completo en `bot_plan.md` para un bot de trading 24/7:
+- Monitoreo automático de mercados con filtros inteligentes
+- Gestión de posiciones con TP/SL dinámico
+- Sistema de scoring para selección de mejores mercados
+- 10 protecciones de seguridad (blacklist temporal, daily loss limit, etc.)
+- Persistencia de datos y stats tracking
+- Rollout por fases: Dry run → Paper → Micro ($0.25) → Normal ($1.00)
+
+**Estado**: Diseño completo ✅ | Implementación pendiente
+
+Ver también: `CLAUDE.md` para contexto técnico del proyecto.
+
 ## 📁 Estructura
 
 ```
 poly/
 ├── poly_client.py              # Cliente principal
-├── place_order.py              # Script para órdenes
+├── place_order.py              # Script para órdenes manuales
+├── auto_sell.py                # Bot de auto-venta con protecciones
 ├── generate_user_api_keys.py   # Genera API credentials
 ├── verify_wallet.py            # Verifica wallet
+├── bot_plan.md                 # Plan detallado del bot autónomo
+├── CLAUDE.md                   # Guía para Claude Code
 ├── .env                        # Credenciales (NO commitear)
 ├── .env.example                # Plantilla
 ├── Dockerfile                  # Docker

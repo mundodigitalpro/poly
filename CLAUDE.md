@@ -43,11 +43,52 @@ The signature type is auto-detected in `poly_client.py:74` based on presence of 
 
 ### Planned Architecture (Autonomous Bot)
 
-Located in `bot_plan.md`, the autonomous bot will implement:
-- **Market Scanner**: Filter markets by odds (0.30-0.70), spread (<10%), and liquidity
-- **Position Manager**: Track open positions with dynamic TP/SL
-- **Strategy Module**: Calculate take-profit/stop-loss based on entry odds
-- **Main Loop**: 60-second cycle for position monitoring and new market discovery
+Located in `bot_plan.md` (526 lines, production-ready design), the autonomous bot implements:
+
+**Market Selection** (all filters must pass):
+- Odds: 0.30-0.70 (uncertain markets)
+- Spread: <5% (critical for small trades)
+- Volume: >$100 both sides
+- Resolution timeframe: <30 days (avoid capital lockup)
+- Weighted scoring algorithm for ranking candidates
+
+**Position Management**:
+- Persistent storage via `positions.json`, `blacklist.json`, `stats.json`
+- Dynamic TP/SL based on entry odds (8-25% targets)
+- Temporal blacklist (3 days, max 2 attempts per market)
+- Partial fill handling
+- Real balance verification each loop
+
+**Risk Management** (10 protections):
+- Capital: $5 safety reserve, $0.25-$1.00 per trade (phased)
+- Daily loss limit: $3
+- Max 5 concurrent positions
+- 5-minute cooldown between trades
+- Rate limiting: 20 API calls/min
+- Dry run mode for testing
+
+**Stats Tracking**:
+- Win rate, profit factor, Sharpe ratio
+- P&L by odds range
+- Daily dashboard with performance metrics
+- Fee tracking (integrated into TP/SL calculations)
+
+**Deployment Phases**:
+1. Dry run (7+ days simulation)
+2. Paper trading (1 week analysis)
+3. Micro trading ($0.25, 20-30 trades)
+4. Normal trading ($1.00, gradual scaling)
+5. VPS deployment (after 2+ weeks stable)
+
+**Main Loop** (120-300s interval):
+1. Load positions + verify balance
+2. Scan open positions → execute TP/SL
+3. Check if can operate (balance, limits, cooldown)
+4. Scan markets → rank by score → select best
+5. Execute trade → save position → update stats
+6. Repeat
+
+See `bot_plan.md` for complete implementation details including `config.json` structure, logging format, and error handling patterns.
 
 ## Environment Setup
 
