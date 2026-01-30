@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.11.0] - 2026-01-30
+### Added
+- **Inter-Agent Communication System**: Enabled programmatic pair programming between AI agents.
+  - Claude (Opus 4.5), Codex (GPT-5.2), and Gemini can now communicate via CLI.
+  - Non-interactive commands: `codex exec "msg" --full-auto` and `gemini -p "msg" -o text`.
+  - Documented communication protocols in all three memory files.
+- **Documentation**: Updated `AGENTS.md`, `GEMINI.md`, and `CLAUDE.md` with:
+  - Inter-agent communication commands and examples.
+  - Coordination guidelines and best practices.
+  - Protocol for task delegation and status reporting.
+
+### Technical Details
+- Codex CLI v0.92.0: Uses `exec` subcommand with `--full-auto` for non-interactive mode.
+- Gemini CLI v0.26.0: Uses `-p` (prompt) flag with `-o text` for non-interactive mode.
+- Communication is synchronous via stdout capture.
+
 ## [0.10.0] - 2026-01-29
 ### Added
 - **Autonomous Bot Beta**: Complete implementation of the autonomous trading bot (dry-run ready).

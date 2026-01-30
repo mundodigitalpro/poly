@@ -14,6 +14,46 @@ When making changes, ensure consistency across all three memory files. Each agen
 - Use **GEMINI.md** for current state (what's implemented, what's pending, quick commands)
 - Use **CLAUDE.md** for technical questions (how auth works, why signature_type matters, bot architecture)
 
+## Inter-Agent Communication (Pair Programming)
+
+The three AI agents can communicate programmatically via their CLI tools in non-interactive mode:
+
+| Agent | Model | CLI Command | Non-Interactive Mode |
+|-------|-------|-------------|---------------------|
+| **Claude** | Opus 4.5 | `claude` | Already in session (this agent) |
+| **Codex** | GPT-5.2 | `codex` | `codex exec "prompt" --full-auto` |
+| **Gemini** | Gemini | `gemini` | `gemini -p "prompt" -o text` |
+
+### How to Communicate with Other Agents
+
+**To Codex** (code review, refactoring, process questions):
+```bash
+codex exec "Your message here" --full-auto
+# With output to file:
+codex exec "Review market_scanner.py" --full-auto -o /tmp/codex_response.txt
+```
+
+**To Gemini** (state queries, context, quick tasks):
+```bash
+gemini -p "Your message here" -o text
+# With auto-approval for actions:
+gemini -p "Check project status" -o text -y
+```
+
+### Coordination Patterns
+1. **Task Delegation**: Send specific, actionable prompts to other agents
+2. **Code Review**: Ask Codex to review changes before committing
+3. **State Sync**: Query Gemini for current project status
+4. **Parallel Work**: Assign independent tasks to different agents
+5. **Memory Updates**: Each agent updates its own memory file after significant work
+
+### Best Practices
+- Keep prompts clear and specific
+- Include context when needed (file paths, task requirements)
+- Update all three memory files when making cross-cutting changes
+- Use `--full-auto` (Codex) or `-y` (Gemini) for automated workflows
+- Document collaboration outcomes in CHANGELOG.md
+
 ## Project Overview
 
 Polymarket trading client and autonomous bot written in Python. The project enables trading on Polymarket via API using the `py-clob-client` library, supporting both Magic Link (email/Gmail) and MetaMask authentication methods.

@@ -45,6 +45,39 @@ When contributing, consult the relevant memory file for your needs. Maintain con
 - Update `AGENTS.md` when workflows, conventions, or contributor guidance change.
 - Update `CLAUDE.md` when authentication patterns or core component behavior changes.
 
+## Inter-Agent Communication (Pair Programming)
+The three AI agents can communicate programmatically via terminal commands:
+
+| Agent | CLI Tool | Non-Interactive Command | Version |
+|-------|----------|------------------------|---------|
+| **Claude** | `claude` | Already in session | Opus 4.5 |
+| **Codex** | `codex` | `codex exec "message" --full-auto` | 0.92.0 |
+| **Gemini** | `gemini` | `gemini -p "message" -o text` | 0.26.0 |
+
+### How It Works
+- Each agent can invoke another agent's CLI in non-interactive mode
+- Responses are returned as stdout text
+- Use `--full-auto` (Codex) or `-y` (Gemini) for auto-approval of actions
+- Save responses to file: `-o file.txt` (Codex) or redirect stdout (Gemini)
+
+### Communication Examples
+```bash
+# Claude asking Codex to review code
+codex exec "Review the changes in market_scanner.py for code quality" --full-auto
+
+# Claude asking Gemini about project state
+gemini -p "What is the current phase and next task?" -o text
+
+# Codex asking Gemini for context
+gemini -p "Summarize recent changes to the bot" -o text
+```
+
+### Coordination Guidelines
+- Use inter-agent communication for: code reviews, task delegation, status checks
+- Each agent should update its memory file after completing significant work
+- When receiving a task from another agent, acknowledge and report results
+- Prefer async communication (file-based) for long-running tasks
+
 ## Authentication & Signature Types
 - Magic Link (email/Gmail) uses `signature_type=1` and requires `POLY_FUNDER_ADDRESS`; EOA wallets use `signature_type=0` without the funder address. `signature_type=2` is rare.
 - `poly_client.py` auto-detects the signature type based on `POLY_FUNDER_ADDRESS`, but `place_order.py` may be hardcoded—keep these consistent.

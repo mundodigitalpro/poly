@@ -47,9 +47,14 @@ This repository is managed by a triad of agent contexts. **Consult these before 
   - **Unit Tests**: `tests/` added (strategy, position manager).
   - **Optimization**: MarketScanner includes client-side rate limiting to avoid API throttling.
 - **Next Step**: Phase 3 (Extended Dry Run).
-  - Task #13: Run bot for 7 days in dry-run mode and collect metrics.
+  - Task #13: Run bot for 7 days in dry-run mode.
 - Basic CLI (`poly_client.py`) functional.
-- Autonomous Bot is operational in dry-run mode.
+- Autonomous Bot is fully operational in dry-run mode.
+
+**Technical Report: Market Discovery Challenges**
+- **Issue (RESOLVED)**: Spread calculation was broken - orderbook returns bids sorted ascending and asks sorted descending, but code was taking first element (worst price).
+- **Fix Applied**: `market_scanner.py` now uses `max(bids)` and `min(asks)` to get correct best prices.
+- **Result**: Scanner now finds candidates with correct spreads (1-5%) instead of rejecting all with 196% spread.
 
 ## Useful Commands
 - `python poly_client.py --balance`
@@ -58,3 +63,24 @@ This repository is managed by a triad of agent contexts. **Consult these before 
 - `python main_bot.py --once` (single dry-run loop)
 - `python main_bot.py` (continuous dry run)
 - `python -m pytest` (requires `pip install pytest`)
+
+## Inter-Agent Communication (Pair Programming)
+The three AI agents can communicate programmatically:
+
+| Agent | How to Contact | Example |
+|-------|----------------|---------|
+| **Claude** | Running in separate terminal | Direct conversation |
+| **Codex** | `codex exec "msg" --full-auto` | `codex exec "Review this PR" --full-auto` |
+| **Gemini** | `gemini -p "msg" -o text` | `gemini -p "What's the project status?" -o text` |
+
+### When Another Agent Contacts You
+- You may receive messages from Claude or Codex via the `-p` prompt flag
+- Acknowledge receipt and provide requested information
+- Update this file (GEMINI.md) with any state changes from the collaboration
+- Report completion status back to the requesting agent
+
+### Communication Protocol
+1. **Task Assignment**: Another agent sends a prompt with a specific task
+2. **Execution**: Complete the task using available tools
+3. **Response**: Return results via stdout (captured by calling agent)
+4. **Documentation**: Update relevant memory files if state changed
