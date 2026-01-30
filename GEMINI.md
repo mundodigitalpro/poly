@@ -41,26 +41,31 @@ This repository is managed by a triad of agent contexts. **Consult these before 
   - Phased rollout: Dry run -> Paper -> Micro -> Normal.
   - 10+ safety protections.
 
-## Current State (as of 2026-01-30)
-- **Version**: 0.12.0 (Beta)
-- **Phase 0 (Prep)**: Completed.
-- **Phase 1 (Core Modules)**: COMPLETED.
-- **Phase 2 (Integration & Testing)**: COMPLETED.
-  - `main_bot.py`: Implemented and verified via dry run (`python main_bot.py --once`).
-  - **Unit Tests**: `tests/` added (strategy, position manager, stop loss emergency exit, gamma client).
-  - **Optimization**: MarketScanner includes client-side rate limiting to avoid API throttling.
-- **Phase 2.5 (Scanner Hardening)**: COMPLETED (2026-01-30).
-  - Coordinated by AMP (architect trial) with CODEX (developer).
-  - 6 resilience fixes applied to `market_scanner.py`.
-- **Phase 2.6 (Gamma API Integration)**: COMPLETED (2026-01-30).
-  - New: `bot/gamma_client.py` for volume/liquidity data.
-  - Modified: `bot/market_scanner.py` to use Gamma data.
-  - Config: `gamma_api.enabled`, `min_volume_24h`, `min_liquidity`.
-  - All 20 tests passing.
-- **Next Step**: Phase 3 (Validation Dry Run).
-  - Task #13: Run bot for 2-4 hours in dry-run mode (~15-30 cycles).
-- Basic CLI (`poly_client.py`) functional.
-- Autonomous Bot is fully operational in dry-run mode with volume filtering.
+## Current State (as of 2026-01-30 Evening)
+- **Version**: 0.12.1 (Beta)
+- **Phase 0-2.6**: COMPLETED (see history below)
+- **Phase 2.7 (Arbitrage Research)**: COMPLETED (2026-01-30)
+  - Dutch Book: NOT VIABLE (HFT dominates)
+  - NegRisk Multi-outcome: NOT VIABLE (efficient markets)
+  - Whale Tracking: ✅ IMPLEMENTED
+- **Bot Status**: Running in dry-run, 10/10 positions active
+- **Tests**: 20/20 passing
+
+### New Tools Added (2026-01-30)
+| Tool | Purpose | Status |
+|------|---------|--------|
+| `dutch_book_scanner.py` | YES/NO arbitrage detection | Research complete |
+| `negrisk_scanner.py` | Multi-outcome arbitrage | Research complete |
+| `whale_tracker.py` | Whale trade tracking & copy signals | ✅ Production ready |
+
+### Phase History
+- **Phase 0 (Prep)**: Completed
+- **Phase 1 (Core Modules)**: Completed
+- **Phase 2 (Integration)**: Completed
+- **Phase 2.5 (Scanner Hardening)**: Completed
+- **Phase 2.6 (Gamma API)**: Completed
+- **Phase 2.7 (Arbitrage Research)**: Completed
+- **Next**: Phase 3 (Extended Dry Run) + Phase 2.8 (Whale Integration)
 
 **Implemented Proposals:**
 - `PROPOSAL_TRENDING_VOLUME.md`: Gamma API integration

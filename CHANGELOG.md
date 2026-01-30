@@ -2,6 +2,30 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.12.1] - 2026-01-30 (Evening)
+### Added
+- **Arbitrage Research Tools**: Three scanners for investigating arbitrage strategies.
+  - `dutch_book_scanner.py`: Detects YES+NO<1 opportunities (Dutch Book)
+  - `negrisk_scanner.py`: Analyzes multi-outcome markets for NegRisk arbitrage
+  - `whale_tracker.py`: Tracks whale trades and generates copy trading signals
+
+- **Whale Tracker Features**:
+  - Real-time whale trade detection via `data-api.polymarket.com/trades`
+  - Trader leaderboard by volume
+  - Copy trading signal generation (whale consensus)
+  - Wallet tracking for specific addresses
+  - Continuous monitoring mode with alerts
+
+### Research Findings
+- **Dutch Book**: NOT VIABLE - Markets maintain YES+NO ≥ 1.001, HFT bots dominate
+- **NegRisk**: NOT VIABLE - All events have Σ(NO) ≥ N-1, markets efficient
+- **Whale Tracking**: VIABLE - Public API available, useful data for copy trading
+
+### Documentation
+- Updated CLAUDE.md with arbitrage research findings
+- Updated GEMINI.md with current state and new tools
+- Created team handoff plan in HANDOFF.md
+
 ## [0.12.0] - 2026-01-30
 ### Added
 - **Gamma API Integration**: New client for fetching volume and liquidity data from Polymarket's Gamma API.

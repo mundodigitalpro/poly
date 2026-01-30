@@ -266,6 +266,42 @@ docker-compose logs -f
 - Stop Loss is an emergency exit - price floor makes no sense when you're cutting losses
 - Parameter name `is_emergency_exit` is semantic and self-documenting
 
+### 2026-01-30: Arbitrage Research & Whale Tracking Tools
+
+**Research Conducted**: Investigated three arbitrage strategies for Polymarket.
+
+**1. Dutch Book Arbitrage (YES + NO < 1)**
+- **Result**: NOT VIABLE
+- **Finding**: All markets have YES + NO ≥ 1.001 (no margin)
+- **Reason**: HFT bots capture opportunities in <50ms, market makers efficient
+- **Tool Created**: `dutch_book_scanner.py`
+
+**2. NegRisk Multi-Outcome Arbitrage**
+- **Result**: NOT VIABLE
+- **Finding**: All multi-outcome events have Σ(NO) ≥ N-1
+- **Example**: Fed Chair (4 candidates) → Σ(NO) = 3.002 > $3.00 payout
+- **Tool Created**: `negrisk_scanner.py`
+
+**3. Whale Tracking / Copy Trading**
+- **Result**: VIABLE - Implemented
+- **API**: `https://data-api.polymarket.com/trades` (public, no auth)
+- **Data Available**: proxyWallet, side, size, price, timestamp, transactionHash
+- **Tool Created**: `whale_tracker.py`
+
+**Whale Tracker Features**:
+```bash
+python whale_tracker.py                    # Recent whale trades
+python whale_tracker.py --leaderboard      # Top traders by volume
+python whale_tracker.py --signals          # Copy trading signals
+python whale_tracker.py --monitor          # Continuous monitoring
+python whale_tracker.py --track 0xABC...   # Track specific wallet
+```
+
+**Key Findings**:
+- Polymarket markets are highly efficient (no simple arbitrage)
+- Whale data is publicly accessible via data-api
+- Copy trading is viable strategy for future integration
+
 ### 2026-01-30: Gamma API Integration for Volume/Liquidity
 
 **Problem**: CLOB API (`get_sampling_markets`) returns `volume=0.0` for all markets. Without volume data, the bot cannot filter by liquidity or score markets by trading activity.
