@@ -2,6 +2,29 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.12.2] - 2026-01-30 (Late Evening)
+### Added
+- **Whale Tracking Integration**: Sentiment-based scoring from whale activity.
+  - `bot/whale_service.py`: WhaleService class with sentiment scoring (-1 to +1)
+  - Integrates into MarketScanner to boost/penalize scores based on whale activity
+  - Configurable via `whale_tracking` section in config.json (disabled by default)
+
+- **Position Analysis Tool**: `analyze_positions.py` utility for risk analysis.
+  - Calculates distance to TP/SL for all positions
+  - Risk/Reward ratio analysis
+  - Flags positions near triggers
+
+### Documentation
+- `PROPOSAL_WHALE_INTEGRATION.md`: Design document for whale integration
+- Updated `GEMINI.md` with current state
+
+### Team Collaboration
+- KIMI: Created whale_service.py and analyze_positions.py
+- AMP: Designed proposal, integrated into market_scanner.py, config updates
+- CODEX: Available for code reviews
+
+---
+
 ## [0.12.1] - 2026-01-30 (Evening)
 ### Added
 - **Arbitrage Research Tools**: Three scanners for investigating arbitrage strategies.

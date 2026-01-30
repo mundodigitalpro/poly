@@ -1,14 +1,41 @@
-# Handoff Document - 2026-01-30
+# Handoff Document - 2026-01-30 (Updated 17:50)
 
-## Estado al Final de la Jornada
+## Estado Actual
 
 | Componente | Estado |
 |------------|--------|
-| **Versión** | 0.12.1 |
+| **Versión** | 0.12.2 |
 | **Bot Principal** | Corriendo en dry-run, 10/10 posiciones |
 | **Tests** | 20/20 pasando |
-| **Whale Tracker** | Implementado y funcional |
+| **Whale Tracker** | ✅ Integrado en MarketScanner |
+| **Whale Service** | ✅ bot/whale_service.py creado |
+| **Config** | whale_tracking añadido (disabled) |
 | **Arbitraje** | Investigación completa (no viable) |
+
+## Última Sesión (AMP como Orquestador)
+
+### Trabajo Completado
+1. **AMP**: Creó `PROPOSAL_WHALE_INTEGRATION.md` con diseño
+2. **KIMI**: Implementó `bot/whale_service.py` (Phase 1)
+3. **AMP**: Integró en `bot/market_scanner.py` (Phase 2)
+4. **AMP**: Añadió config `whale_tracking` (Phase 3)
+5. **KIMI**: Creó `analyze_positions.py` para análisis de riesgo
+6. **KIMI**: Actualizó `GEMINI.md` con estado actual
+
+### Commit Realizado
+```
+b545913 feat: integrate whale tracking into market scanner
+  - bot/whale_service.py (nuevo)
+  - bot/market_scanner.py (modificado)
+  - config.json (modificado)
+  - PROPOSAL_WHALE_INTEGRATION.md (nuevo)
+  - analyze_positions.py (nuevo)
+  - GEMINI.md (actualizado)
+```
+
+---
+
+## Estado Anterior (Referencia)
 
 ---
 
@@ -53,24 +80,24 @@ tail -f logs/bot_2026-01-30.log
 - [ ] Al menos 1 TP o SL triggered correctamente
 - [ ] Posiciones abiertas/cerradas sin problemas
 
-### Fase 2.8: Integración de Whale Tracking (MEDIA)
-**Responsable**: AMP (diseño), CODEX (implementación)
+### Fase 2.8: Integración de Whale Tracking ✅ COMPLETADA
+**Responsable**: AMP (diseño), KIMI (implementación Phase 1), AMP (Phase 2-3)
 
-**Objetivo**: Usar datos de whales como filtro adicional en el scanner.
+**Estado**: ✅ Implementado y testeado (20/20 tests passing)
 
-**Tareas**:
-1. Añadir whale consensus como factor en `calculate_market_score()`
-2. Crear alerta cuando whales compren/vendan tokens que tenemos
-3. Filtrar mercados donde whales están vendiendo masivamente
+**Archivos creados/modificados**:
+- `bot/whale_service.py` - WhaleService con get_sentiment() y check_position_alerts()
+- `bot/market_scanner.py` - Integración de sentiment en score calculation
+- `config.json` - Sección whale_tracking añadida (disabled por defecto)
+- `PROPOSAL_WHALE_INTEGRATION.md` - Documento de diseño
 
-**Propuesta de implementación**:
-```python
-# En market_scanner.py
-def _get_whale_sentiment(self, token_id: str) -> float:
-    """Retorna -1 (bearish) a +1 (bullish) basado en actividad de whales."""
-    # Usar whale_tracker para obtener trades recientes
-    # Calcular ratio buy/sell de whales (>$500)
-    pass
+**Para activar**:
+```json
+"whale_tracking": {
+  "enabled": true,
+  "min_size": 500,
+  "score_weight": 0.2
+}
 ```
 
 ### Fase 4: Paper Trading (SIGUIENTE)
