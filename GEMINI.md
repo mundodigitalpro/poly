@@ -38,23 +38,35 @@ This repository is managed by a triad of agent contexts. **Consult these before 
   - Phased rollout: Dry run -> Paper -> Micro -> Normal.
   - 10+ safety protections.
 
-## Current State (as of 2026-01-29)
-- **Version**: 0.10.0 (Beta)
+## Current State (as of 2026-01-30)
+- **Version**: 0.11.1 (Beta)
 - **Phase 0 (Prep)**: Completed.
 - **Phase 1 (Core Modules)**: COMPLETED.
 - **Phase 2 (Integration & Testing)**: COMPLETED.
   - `main_bot.py`: Implemented and verified via dry run (`python main_bot.py --once`).
-  - **Unit Tests**: `tests/` added (strategy, position manager).
+  - **Unit Tests**: `tests/` added (strategy, position manager, stop loss emergency exit).
   - **Optimization**: MarketScanner includes client-side rate limiting to avoid API throttling.
 - **Next Step**: Phase 3 (Extended Dry Run).
   - Task #13: Run bot for 7 days in dry-run mode.
 - Basic CLI (`poly_client.py`) functional.
 - Autonomous Bot is fully operational in dry-run mode.
 
+**Incident Report: Stop Loss Bug (2026-01-30)**
+- **Issue (RESOLVED)**: Stop Loss orders were blocked when price dropped >50% from entry due to `min_sell_ratio` safety check.
+- **Root Cause**: `execute_sell()` applied same price floor to all sells, including emergency exits.
+- **Fix Applied**: Added `is_emergency_exit` flag to bypass check for Stop Loss orders.
+- **Test**: `tests/test_stop_loss_emergency_exit.py` - PASSED.
+- **Coordination**: Claude (architecture) → Codex (implementation) → Gemini (verification).
+
 **Technical Report: Market Discovery Challenges**
 - **Issue (RESOLVED)**: Spread calculation was broken - orderbook returns bids sorted ascending and asks sorted descending, but code was taking first element (worst price).
 - **Fix Applied**: `market_scanner.py` now uses `max(bids)` and `min(asks)` to get correct best prices.
 - **Result**: Scanner now finds candidates with correct spreads (1-5%) instead of rejecting all with 196% spread.
+
+**Open Positions (5 active)**
+- All positions have reasonable entry prices (0.302 - 0.7)
+- No "toxic" positions detected at extreme low prices
+- Ready for dry-run verification with fixed Stop Loss logic
 
 ## Useful Commands
 - `python poly_client.py --balance`

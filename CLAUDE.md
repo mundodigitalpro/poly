@@ -235,6 +235,25 @@ docker-compose logs -f
 - **Insufficient Balance**: Check wallet on PolygonScan or Polymarket portfolio
 - **Empty Orderbook**: Market may have no liquidity; try a different token_id
 
+## Architectural Decisions Log
+
+### 2026-01-30: Stop Loss Emergency Exit Fix
+
+**Problem**: The `min_sell_ratio` safety check in `trader.py` blocked Stop Loss execution when price dropped >50% from entry, causing positions to become "toxic" and unreachable.
+
+**Root Cause**: `execute_sell()` applied the same price floor to all sells, including emergency Stop Loss exits where the priority is to exit at any price.
+
+**Solution**: Added `is_emergency_exit: bool = False` parameter to `execute_sell()`. When `True`, the `min_sell_ratio` check is bypassed.
+
+**Implementation**:
+- `bot/trader.py:61-76`: New parameter, conditional check
+- `main_bot.py:166`: Pass `is_emergency_exit=action == "stop_loss"` for SL orders
+
+**Design Rationale**:
+- `min_sell_ratio` is kept for Take Profits and normal sells (prevents accidental dumps)
+- Stop Loss is an emergency exit - price floor makes no sense when you're cutting losses
+- Parameter name `is_emergency_exit` is semantic and self-documenting
+
 ## Security Considerations
 
 - Never commit `.env` file (already in `.gitignore`)

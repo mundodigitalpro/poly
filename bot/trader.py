@@ -59,10 +59,15 @@ class BotTrader:
         return self._execute_order(token_id, price, size, BUY)
 
     def execute_sell(
-        self, token_id: str, price: float, size: float, entry_price: Optional[float] = None
+        self,
+        token_id: str,
+        price: float,
+        size: float,
+        entry_price: Optional[float] = None,
+        is_emergency_exit: bool = False,
     ) -> TradeFill:
         """Place a SELL order with safety checks and verify fills."""
-        if entry_price is not None:
+        if entry_price is not None and not is_emergency_exit:
             min_price = entry_price * self.min_sell_ratio
             if price < min_price:
                 raise ValueError(

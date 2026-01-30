@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.11.1] - 2026-01-30
+### Fixed
+- **Critical: Stop Loss Execution Bug**: Fixed issue where Stop Loss orders were blocked when price dropped >50% from entry.
+  - Root cause: `min_sell_ratio` safety check applied to all sells, including emergency exits.
+  - Solution: Added `is_emergency_exit` flag to `execute_sell()` to bypass price floor for Stop Loss.
+  - Files: `bot/trader.py`, `main_bot.py`
+- **Test Coverage**: Added `tests/test_stop_loss_emergency_exit.py` to verify 90% price drop handling.
+
+### Technical Details
+- Incident discovered during 7-hour test run (2026-01-29).
+- Analysis documented in `PLAN.md`.
+- Coordinated fix between Claude (architecture), Codex (implementation), and Gemini (verification).
+
 ## [0.11.0] - 2026-01-30
 ### Added
 - **Inter-Agent Communication System**: Enabled programmatic pair programming between AI agents.

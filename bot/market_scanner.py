@@ -7,6 +7,8 @@ Fetches markets, applies filters, and ranks candidates using the strategy score.
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 
+from py_clob_client.constants import END_CURSOR
+
 
 class MarketScanner:
     """Fetch, filter, and rank markets for potential trades."""
@@ -29,12 +31,22 @@ class MarketScanner:
         self.strategy = strategy
 
         self.filters = config.get("market_filters", {})
+        self.market_source = self.filters.get("source", "sampling")
+        self.max_markets = self.filters.get("max_markets", 200)
+        self.allow_missing_resolution = self.filters.get(
+            "allow_missing_resolution_date", False
+        )
+        self.treat_inactive_as_closed = self.filters.get(
+            "treat_inactive_as_closed", True
+        )
+        self.max_detail_fetch = self.filters.get("max_market_detail_fetch", 50)
+        self._detail_fetch_count = 0
         api_cfg = config.get("api", {})
         self.max_calls_per_minute = api_cfg.get("max_calls_per_minute", 20)
         self.min_call_interval = 60.0 / max(1, self.max_calls_per_minute)
         self._last_call_ts = 0.0
 
-    def scan_markets(self, max_markets: int = 20) -> List[Dict[str, Any]]:
+    def scan_markets(self, max_markets: Optional[int] = None) -> List[Dict[str, Any]]:
         """
         Scan markets and return ranked candidates.
 
@@ -44,23 +56,60 @@ class MarketScanner:
         Returns:
             List of candidate dicts sorted by score desc
         """
+        if max_markets is None:
+            max_markets = self.max_markets
         markets = self._fetch_markets(max_markets)
         candidates: List[Dict[str, Any]] = []
+        stats = {
+            "closed": 0,
+            "closed_status": 0,
+            "closed_flag": 0,
+            "inactive_flag": 0,
+            "missing_token": 0,
+            "blacklisted": 0,
+            "has_position": 0,
+            "metadata_filtered": 0,
+            "no_orderbook": 0,
+            "price_filtered": 0,
+            "errors": 0,
+        }
 
         for i, market in enumerate(markets):
             if i % 5 == 0:
                 self.logger.info(f"Scanning market {i+1}/{len(markets)}...")
             try:
-                candidate = self._analyze_market(market)
+                if i < 3:
+                    self._log_market_status(market)
+                candidate, reason = self._analyze_market(market)
                 if candidate:
                     candidates.append(candidate)
+                else:
+                    stats[reason] = stats.get(reason, 0) + 1
             except Exception as exc:
+                stats["errors"] += 1
                 self.logger.warn(f"Market skipped due to error: {exc}")
 
         candidates.sort(key=lambda c: c["score"], reverse=True)
+        self.logger.info(
+            "Scan summary: "
+            f"candidates={len(candidates)} "
+            f"closed={stats['closed']} "
+            f"closed_status={stats['closed_status']} "
+            f"closed_flag={stats['closed_flag']} "
+            f"inactive_flag={stats['inactive_flag']} "
+            f"missing_token={stats['missing_token']} "
+            f"has_position={stats['has_position']} "
+            f"blacklisted={stats['blacklisted']} "
+            f"metadata_filtered={stats['metadata_filtered']} "
+            f"no_orderbook={stats['no_orderbook']} "
+            f"price_filtered={stats['price_filtered']} "
+            f"errors={stats['errors']}"
+        )
         return candidates
 
-    def pick_best_candidate(self, max_markets: int = 20) -> Optional[Dict[str, Any]]:
+    def pick_best_candidate(
+        self, max_markets: Optional[int] = None
+    ) -> Optional[Dict[str, Any]]:
         """Return the best candidate market or None."""
         candidates = self.scan_markets(max_markets=max_markets)
         return candidates[0] if candidates else None
@@ -68,47 +117,78 @@ class MarketScanner:
     def _fetch_markets(self, max_markets: int) -> List[Dict[str, Any]]:
         """Fetch markets from the API."""
         self.logger.info("Fetching markets for scan...")
-        resp = self._call_api(self.client.get_sampling_markets, next_cursor="")
+        fetch_fn = self._select_market_source()
 
-        data: List[Dict[str, Any]] = []
-        if isinstance(resp, dict):
-            data = resp.get("data", [])
-        elif isinstance(resp, list):
-            data = resp
+        results: List[Dict[str, Any]] = []
+        next_cursor = "MA=="
 
-        if not data:
+        while next_cursor != END_CURSOR and len(results) < max_markets:
+            resp = self._call_api(fetch_fn, next_cursor=next_cursor)
+            if isinstance(resp, dict):
+                data = resp.get("data", [])
+                next_cursor = resp.get("next_cursor", END_CURSOR)
+            elif isinstance(resp, list):
+                data = resp
+                next_cursor = END_CURSOR
+            else:
+                data = []
+                next_cursor = END_CURSOR
+
+            if not data:
+                break
+
+            remaining = max_markets - len(results)
+            results.extend(data[:remaining])
+
+        if not results:
             self.logger.warn("No markets returned by API.")
-            return []
+        return results
 
-        return data[:max_markets]
+    def _analyze_market(
+        self, market: Dict[str, Any]
+    ) -> Tuple[Optional[Dict[str, Any]], str]:
+        """Analyze a market and return a candidate dict + reason."""
+        closed, reason = self._is_closed(market)
+        if closed:
+            return None, reason
 
-    def _analyze_market(self, market: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-        """Analyze a market and return a candidate dict if it passes filters."""
-        if self._is_closed(market):
-            return None
-
-        token_id = self._extract_token_id(market)
-        if not token_id:
-            return None
-
-        if self.position_manager.has_position(token_id):
-            return None
-        if self.position_manager.is_blacklisted(token_id):
-            return None
+        token_candidates = self._extract_token_candidates(market)
+        if not token_candidates:
+            return None, "missing_token"
 
         question = market.get("question") or market.get("title") or "Unknown Market"
         volume_usd = self._extract_volume_usd(market)
         days_to_resolve = self._days_to_resolve(market)
 
-        best_bid, best_ask = self._get_best_prices(token_id)
-        if best_bid <= 0 or best_ask <= 0:
-            return None
+        if not self._passes_metadata_filters(
+            volume_usd, days_to_resolve, token_candidates[0]
+        ):
+            return None, "metadata_filtered"
+
+        best_bid = best_ask = 0.0
+        token_id = None
+        for candidate_id in token_candidates:
+            if self.position_manager.has_position(candidate_id):
+                return None, "has_position"
+            if self.position_manager.is_blacklisted(candidate_id):
+                return None, "blacklisted"
+            best_bid, best_ask = self._get_best_prices(candidate_id)
+            if best_bid > 0 and best_ask > 0:
+                token_id = candidate_id
+                break
+
+        if not token_id or best_bid <= 0 or best_ask <= 0:
+            return None, "no_orderbook"
 
         odds = (best_bid + best_ask) / 2
         spread_percent = self._spread_percent(best_bid, best_ask)
 
-        if not self._passes_filters(odds, spread_percent, volume_usd, days_to_resolve):
-            return None
+        if not self._passes_price_filters(odds, spread_percent, token_id, days_to_resolve):
+            self.logger.debug(
+                f"Rejected {token_id[:8]}: odds={odds:.2f} spread={spread_percent:.1f}% "
+                f"days={days_to_resolve}"
+            )
+            return None, "price_filtered"
 
         score = self.strategy.calculate_market_score(
             spread_percent=spread_percent,
@@ -127,35 +207,76 @@ class MarketScanner:
             "volume_usd": round(volume_usd, 2),
             "days_to_resolve": days_to_resolve,
             "score": score,
-        }
+        }, "ok"
 
-    def _passes_filters(
-        self,
-        odds: float,
-        spread_percent: float,
-        volume_usd: float,
-        days_to_resolve: int,
+    def _passes_metadata_filters(
+        self, volume_usd: float, days_to_resolve: int, token_id: str
     ) -> bool:
-        """Apply configured filters."""
+        """Apply filters that do not require orderbook calls."""
         min_odds = self.filters.get("min_odds", 0.30)
         max_odds = self.filters.get("max_odds", 0.70)
         max_spread = self.filters.get("max_spread_percent", 5.0)
         min_volume = self.filters.get("min_volume_usd", 100.0)
         max_days = self.filters.get("max_days_to_resolve", 30)
+        _ = (min_odds, max_odds, max_spread)
+
+        if volume_usd > 0 and volume_usd < min_volume:
+            self.logger.debug(
+                f"Rejected {token_id[:8]}: volume={volume_usd:.2f} < {min_volume}"
+            )
+            return False
+
+        if days_to_resolve == 9999 and self.allow_missing_resolution:
+            return True
+
+        if days_to_resolve > max_days:
+            self.logger.debug(
+                f"Rejected {token_id[:8]}: days={days_to_resolve} > {max_days}"
+            )
+            return False
+
+        return True
+
+    def _passes_price_filters(
+        self, odds: float, spread_percent: float, token_id: str, days_to_resolve: int
+    ) -> bool:
+        """Apply filters that require orderbook data."""
+        min_odds = self.filters.get("min_odds", 0.30)
+        max_odds = self.filters.get("max_odds", 0.70)
+        max_spread = self.filters.get("max_spread_percent", 5.0)
 
         if not (min_odds <= odds <= max_odds):
+            self.logger.debug(
+                f"Rejected {token_id[:8]}: odds={odds:.2f} outside [{min_odds}, {max_odds}]"
+            )
             return False
         if spread_percent > max_spread:
-            return False
-        if volume_usd < min_volume:
-            return False
-        if days_to_resolve > max_days:
+            self.logger.debug(
+                f"Rejected {token_id[:8]}: spread={spread_percent:.1f}% > {max_spread}"
+            )
             return False
         return True
 
+    def _select_market_source(self):
+        """Select which API endpoint to use for market discovery."""
+        source = str(self.market_source).lower()
+        if source in ("markets", "full"):
+            return self.client.get_markets
+        if source in ("simplified", "markets_simplified"):
+            return self.client.get_simplified_markets
+        if source in ("sampling_simplified", "sampling-simplified"):
+            return self.client.get_sampling_simplified_markets
+        return self.client.get_sampling_markets
+
     def _get_best_prices(self, token_id: str) -> Tuple[float, float]:
         """Fetch orderbook and return best bid/ask prices."""
-        order_book = self._call_api(self.client.get_order_book, token_id)
+        try:
+            order_book = self._call_api(self.client.get_order_book, token_id)
+        except Exception as exc:
+            msg = str(exc).lower()
+            if "no orderbook exists" in msg or "404" in msg:
+                return 0.0, 0.0
+            raise
         bids = getattr(order_book, "bids", None)
         asks = getattr(order_book, "asks", None)
 
@@ -168,20 +289,46 @@ class MarketScanner:
                 bids = []
                 asks = []
 
-        best_bid = self._extract_price(bids, default=0.0)
-        best_ask = self._extract_price(asks, default=0.0)
+        # Best bid = highest bid price, best ask = lowest ask price
+        best_bid = self._extract_best_bid(bids)
+        best_ask = self._extract_best_ask(asks)
         return best_bid, best_ask
 
-    def _extract_price(self, orders: Any, default: float = 0.0) -> float:
-        """Extract best price from order list."""
+    def _extract_best_bid(self, orders: Any) -> float:
+        """Extract the highest bid price from order list."""
         if not orders:
-            return default
-        top = orders[0]
-        if hasattr(top, "price"):
-            return float(top.price)
-        if isinstance(top, dict) and "price" in top:
-            return float(top["price"])
-        return default
+            return 0.0
+        prices = []
+        for order in orders:
+            price = self._get_order_price(order)
+            if price > 0:
+                prices.append(price)
+        return max(prices) if prices else 0.0
+
+    def _extract_best_ask(self, orders: Any) -> float:
+        """Extract the lowest ask price from order list."""
+        if not orders:
+            return 0.0
+        prices = []
+        for order in orders:
+            price = self._get_order_price(order)
+            if price > 0:
+                prices.append(price)
+        return min(prices) if prices else 0.0
+
+    def _get_order_price(self, order: Any) -> float:
+        """Extract price from an order object or dict."""
+        if hasattr(order, "price"):
+            try:
+                return float(order.price)
+            except (TypeError, ValueError):
+                return 0.0
+        if isinstance(order, dict) and "price" in order:
+            try:
+                return float(order["price"])
+            except (TypeError, ValueError):
+                return 0.0
+        return 0.0
 
     def _spread_percent(self, bid: float, ask: float) -> float:
         """Calculate spread percent using mid price."""
@@ -190,25 +337,83 @@ class MarketScanner:
         mid = (bid + ask) / 2
         return ((ask - bid) / mid) * 100
 
-    def _extract_token_id(self, market: Dict[str, Any]) -> Optional[str]:
-        """Extract a token_id from market data."""
-        for key in ("token_id", "tokenId"):
-            if key in market:
-                return str(market[key])
+    def _extract_token_candidates(self, market: Dict[str, Any]) -> List[str]:
+        """Extract candidate token IDs from market data."""
+        token_ids: List[str] = []
 
         tokens = market.get("tokens") or []
         if isinstance(tokens, dict):
             tokens = list(tokens.values())
 
         if isinstance(tokens, list):
+            token_keys = ("clob_token_id", "clobTokenId", "token_id", "tokenId")
             # Prefer YES outcome when present
             for token in tokens:
                 outcome = (token.get("outcome") or token.get("name") or "").lower()
                 if outcome in ("yes", "true"):
-                    return str(token.get("token_id") or token.get("tokenId") or "")
+                    token_id = self._first_key(token, token_keys)
+                    if token_id and self._is_valid_token_id(str(token_id)):
+                        token_ids.append(str(token_id))
             if tokens:
                 token = tokens[0]
-                return str(token.get("token_id") or token.get("tokenId") or "")
+                token_id = self._first_key(token, token_keys)
+                if token_id and self._is_valid_token_id(str(token_id)):
+                    token_ids.append(str(token_id))
+
+        # Fallback to top-level token_id only if tokens list is missing
+        for key in ("clob_token_id", "clobTokenId", "token_id", "tokenId"):
+            if key in market:
+                value = str(market[key])
+                if self._is_valid_token_id(value):
+                    token_ids.append(value)
+
+        condition_id = market.get("condition_id") or market.get("conditionId")
+        if condition_id and self._detail_fetch_count < self.max_detail_fetch:
+            self._detail_fetch_count += 1
+            detail = self._call_api(self.client.get_market, condition_id)
+            if isinstance(detail, dict):
+                detail_tokens = detail.get("tokens") or []
+                if isinstance(detail_tokens, list):
+                    token_keys = (
+                        "clob_token_id",
+                        "clobTokenId",
+                        "token_id",
+                        "tokenId",
+                    )
+                    for token in detail_tokens:
+                        outcome = (token.get("outcome") or token.get("name") or "").lower()
+                        if outcome in ("yes", "true"):
+                            token_id = self._first_key(token, token_keys)
+                            if token_id and self._is_valid_token_id(str(token_id)):
+                                token_ids.append(str(token_id))
+                    if detail_tokens:
+                        token_id = self._first_key(detail_tokens[0], token_keys)
+                        if token_id and self._is_valid_token_id(str(token_id)):
+                            token_ids.append(str(token_id))
+
+        # De-duplicate while preserving order
+        seen = set()
+        unique_ids = []
+        for token_id in token_ids:
+            if token_id not in seen:
+                seen.add(token_id)
+                unique_ids.append(token_id)
+        return unique_ids
+
+    def _is_valid_token_id(self, value: str) -> bool:
+        """Heuristic check for CLOB token IDs."""
+        if not value:
+            return False
+        # CLOB token IDs are large integers; filter out small IDs.
+        if value.isdigit() and len(value) < 20:
+            return False
+        return True
+
+    def _first_key(self, data: Dict[str, Any], keys: Tuple[str, ...]) -> Optional[Any]:
+        """Return the first available key value from a dict."""
+        for key in keys:
+            if key in data and data[key]:
+                return data[key]
         return None
 
     def _extract_volume_usd(self, market: Dict[str, Any]) -> float:
@@ -260,16 +465,40 @@ class MarketScanner:
                 return None
         return None
 
-    def _is_closed(self, market: Dict[str, Any]) -> bool:
+    def _is_closed(self, market: Dict[str, Any]) -> Tuple[bool, str]:
         """Detect closed/resolved markets."""
         status = str(market.get("status", "")).lower()
         if status in ("closed", "resolved", "settled"):
-            return True
-        if market.get("closed") is True:
-            return True
-        if market.get("active") is False:
-            return True
-        return False
+            return True, "closed_status"
+
+        closed = market.get("closed")
+        active = market.get("active")
+        active_normalized = active
+        if isinstance(active, str):
+            active_normalized = active.strip().lower()
+            if active_normalized in ("true", "1", "yes"):
+                active_normalized = True
+            elif active_normalized in ("false", "0", "no"):
+                active_normalized = False
+
+        if closed is True and active_normalized is False:
+            return True, "closed_flag"
+
+        if self.treat_inactive_as_closed and active_normalized is False:
+            return True, "inactive_flag"
+
+        return False, "ok"
+
+    def _log_market_status(self, market: Dict[str, Any]) -> None:
+        """Log a short sample of market status fields (debug aid)."""
+        status = market.get("status")
+        active = market.get("active")
+        closed = market.get("closed")
+        condition_id = market.get("condition_id") or market.get("conditionId")
+        self.logger.debug(
+            f"Market status sample: status={status} active={active} closed={closed} "
+            f"condition_id={condition_id}"
+        )
 
     def _safe_float(self, value: Any) -> float:
         """Convert value to float safely."""

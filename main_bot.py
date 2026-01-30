@@ -166,6 +166,7 @@ def _update_positions(
                 price=best_bid,
                 size=position.filled_size,
                 entry_price=position.entry_price,
+                is_emergency_exit=action == "stop_loss",
             )
         except Exception as exc:
             logger.error(f"Sell failed for {position.token_id[:8]}...: {exc}")
