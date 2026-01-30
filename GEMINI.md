@@ -41,15 +41,20 @@ This repository is managed by a triad of agent contexts. **Consult these before 
   - Phased rollout: Dry run -> Paper -> Micro -> Normal.
   - 10+ safety protections.
 
-## Current State (as of 2026-01-30 Evening)
+## Current State (as of 2026-01-30 17:45)
 - **Version**: 0.12.1 (Beta)
 - **Phase 0-2.6**: COMPLETED (see history below)
 - **Phase 2.7 (Arbitrage Research)**: COMPLETED (2026-01-30)
   - Dutch Book: NOT VIABLE (HFT dominates)
   - NegRisk Multi-outcome: NOT VIABLE (efficient markets)
   - Whale Tracking: ✅ IMPLEMENTED
-- **Bot Status**: Running in dry-run, 10/10 positions active
+- **Bot Status**: Running (PID 198163), dry-run mode, 10/10 positions active
+  - No TP/SL triggers yet, no errors in logs
+  - All positions have R/R 0.60-0.67, no immediate risk
 - **Tests**: 20/20 passing
+- **New Proposal**: `PROPOSAL_WHALE_INTEGRATION.md` created by AMP
+- **Active Work**: Codex working on `bot/whale_service.py` implementation
+- **Next**: Wait for Codex to complete whale integration
 
 ### New Tools Added (2026-01-30)
 | Tool | Purpose | Status |

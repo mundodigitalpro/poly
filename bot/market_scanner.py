@@ -64,6 +64,22 @@ class MarketScanner:
                 self.logger.warn(f"Failed to init Gamma client: {exc}")
                 self.gamma_enabled = False
 
+        # Whale tracking integration for sentiment-based scoring
+        whale_cfg = config.get("whale_tracking", {})
+        self.whale_enabled = whale_cfg.get("enabled", False)
+        self.whale_weight = whale_cfg.get("score_weight", 0.2)
+        self.whale_service = None
+        if self.whale_enabled:
+            try:
+                from bot.whale_service import WhaleService
+                self.whale_service = WhaleService(
+                    min_whale_size=whale_cfg.get("min_size", 500)
+                )
+                self.logger.info("Whale tracking service initialized")
+            except Exception as exc:
+                self.logger.warn(f"Failed to init WhaleService: {exc}")
+                self.whale_enabled = False
+
     def scan_markets(self, max_markets: Optional[int] = None) -> List[Dict[str, Any]]:
         """
         Scan markets and return ranked candidates.
@@ -229,6 +245,16 @@ class MarketScanner:
             odds=odds,
             days_to_resolve=days_to_resolve,
         )
+
+        # Apply whale sentiment modifier if enabled
+        if self.whale_enabled and self.whale_service:
+            sentiment = self.whale_service.get_sentiment(token_id)
+            score *= (1 + sentiment * self.whale_weight)
+            if abs(sentiment) > 0.3:
+                self.logger.info(
+                    f"Whale sentiment for {token_id[:8]}: {sentiment:+.2f} "
+                    f"(score adjusted: {score:.2f})"
+                )
 
         return {
             "token_id": token_id,

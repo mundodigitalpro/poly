@@ -31,6 +31,12 @@
     "base_url": "https://gamma-api.polymarket.com",
     "cache_ttl_seconds": 300
   },
+  "whale_tracking": {
+    "enabled": false,
+    "min_size": 500,
+    "score_weight": 0.2,
+    "alert_on_sell": true
+  },
   "strategy": {
     "tp_sl_by_odds": {
       "0.30-0.40": {
