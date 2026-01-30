@@ -2,6 +2,7 @@
 Market scanner for the Polymarket trading bot.
 
 Fetches markets, applies filters, and ranks candidates using the strategy score.
+Optionally integrates with Gamma API for volume and liquidity data.
 """
 
 from datetime import datetime
@@ -9,6 +10,8 @@ import time
 from typing import Any, Dict, List, Optional, Tuple
 
 from py_clob_client.constants import END_CURSOR
+
+from bot.gamma_client import GammaClient
 
 
 class MarketScanner:
@@ -47,6 +50,20 @@ class MarketScanner:
         self.min_call_interval = 60.0 / max(1, self.max_calls_per_minute)
         self._last_call_ts = 0.0
 
+        # Gamma API integration for volume/liquidity data
+        gamma_cfg = config.get("gamma_api", {})
+        self.gamma_enabled = gamma_cfg.get("enabled", False)
+        self.gamma_client = None
+        self._gamma_cache: Dict[str, Dict] = {}  # condition_id -> gamma data
+
+        if self.gamma_enabled:
+            try:
+                self.gamma_client = GammaClient(logger=self.logger)
+                self.logger.info("Gamma API client initialized")
+            except Exception as exc:
+                self.logger.warn(f"Failed to init Gamma client: {exc}")
+                self.gamma_enabled = False
+
     def scan_markets(self, max_markets: Optional[int] = None) -> List[Dict[str, Any]]:
         """
         Scan markets and return ranked candidates.
@@ -60,6 +77,11 @@ class MarketScanner:
         if max_markets is None:
             max_markets = self.max_markets
         self._detail_fetch_count = 0
+
+        # Pre-fetch Gamma data for volume/liquidity enrichment
+        if self.gamma_enabled and self.gamma_client:
+            self._prefetch_gamma_data()
+
         markets = self._fetch_markets(max_markets)
         candidates: List[Dict[str, Any]] = []
         stats = {
@@ -164,10 +186,11 @@ class MarketScanner:
 
         question = market.get("question") or market.get("title") or "Unknown Market"
         volume_usd = self._extract_volume_usd(market)
+        liquidity = self._extract_liquidity(market)
         days_to_resolve = self._days_to_resolve(market)
 
         if not self._passes_metadata_filters(
-            volume_usd, days_to_resolve, token_candidates[0]
+            volume_usd, liquidity, days_to_resolve, token_candidates[0]
         ):
             return None, "metadata_filtered"
 
@@ -211,24 +234,40 @@ class MarketScanner:
             "best_ask": round(best_ask, 4),
             "spread_percent": round(spread_percent, 2),
             "volume_usd": round(volume_usd, 2),
+            "liquidity": round(liquidity, 2),
             "days_to_resolve": days_to_resolve,
             "score": score,
         }, "ok"
 
     def _passes_metadata_filters(
-        self, volume_usd: float, days_to_resolve: int, token_id: str
+        self,
+        volume_usd: float,
+        liquidity: float,
+        days_to_resolve: int,
+        token_id: str,
     ) -> bool:
         """Apply filters that do not require orderbook calls."""
         min_odds = self.filters.get("min_odds", 0.30)
         max_odds = self.filters.get("max_odds", 0.70)
         max_spread = self.filters.get("max_spread_percent", 5.0)
         min_volume = self.filters.get("min_volume_usd", 100.0)
+        min_volume_24h = self.filters.get("min_volume_24h", 0)
+        min_liquidity = self.filters.get("min_liquidity", 0)
         max_days = self.filters.get("max_days_to_resolve", 30)
         _ = (min_odds, max_odds, max_spread)
 
-        if volume_usd > 0 and volume_usd < min_volume:
+        # Volume check (use min_volume_24h if set, else min_volume_usd)
+        effective_min_vol = min_volume_24h if min_volume_24h > 0 else min_volume
+        if volume_usd > 0 and volume_usd < effective_min_vol:
             self.logger.debug(
-                f"Rejected {token_id[:8]}: volume={volume_usd:.2f} < {min_volume}"
+                f"Rejected {token_id[:8]}: volume={volume_usd:.2f} < {effective_min_vol}"
+            )
+            return False
+
+        # Liquidity check (only if Gamma data available and filter set)
+        if min_liquidity > 0 and liquidity > 0 and liquidity < min_liquidity:
+            self.logger.debug(
+                f"Rejected {token_id[:8]}: liquidity={liquidity:.2f} < {min_liquidity}"
             )
             return False
 
@@ -429,8 +468,66 @@ class MarketScanner:
                 return data[key]
         return None
 
+    def _prefetch_gamma_data(self) -> None:
+        """Pre-fetch Gamma API data for volume enrichment."""
+        if not self.gamma_client:
+            return
+
+        try:
+            min_vol = self.filters.get("min_volume_24h", 0)
+            min_liq = self.filters.get("min_liquidity", 0)
+
+            gamma_markets = self.gamma_client.get_top_volume_markets(
+                min_volume_24h=min_vol,
+                min_liquidity=min_liq,
+                limit=100,
+            )
+
+            self._gamma_cache.clear()
+            for gm in gamma_markets:
+                condition_id = gm.get("condition_id")
+                if condition_id:
+                    self._gamma_cache[condition_id] = gm
+                # Also index by token IDs for direct lookup
+                for token_id in gm.get("clob_token_ids", []):
+                    if token_id:
+                        self._gamma_cache[f"token:{token_id}"] = gm
+
+            self.logger.info(
+                f"Gamma cache loaded: {len(gamma_markets)} markets with volume data"
+            )
+        except Exception as exc:
+            self.logger.warn(f"Gamma prefetch failed: {exc}")
+
+    def _get_gamma_data(self, market: Dict[str, Any]) -> Optional[Dict]:
+        """Look up Gamma data for a market."""
+        if not self._gamma_cache:
+            return None
+
+        # Try condition_id first
+        condition_id = market.get("condition_id") or market.get("conditionId")
+        if condition_id and condition_id in self._gamma_cache:
+            return self._gamma_cache[condition_id]
+
+        # Try token IDs
+        token_candidates = self._extract_token_candidates(market)
+        for token_id in token_candidates:
+            cache_key = f"token:{token_id}"
+            if cache_key in self._gamma_cache:
+                return self._gamma_cache[cache_key]
+
+        return None
+
     def _extract_volume_usd(self, market: Dict[str, Any]) -> float:
-        """Extract volume in USD from market data."""
+        """Extract volume in USD from market data, preferring Gamma API data."""
+        # Try Gamma API data first (more accurate)
+        gamma_data = self._get_gamma_data(market)
+        if gamma_data:
+            vol_24h = gamma_data.get("volume_24h", 0)
+            if vol_24h > 0:
+                return vol_24h
+
+        # Fallback to CLOB API data
         volume_keys = [
             "volume_usd",
             "volumeUSD",
@@ -442,6 +539,13 @@ class MarketScanner:
         for key in volume_keys:
             if key in market:
                 return self._safe_float(market[key])
+        return 0.0
+
+    def _extract_liquidity(self, market: Dict[str, Any]) -> float:
+        """Extract liquidity from Gamma API data."""
+        gamma_data = self._get_gamma_data(market)
+        if gamma_data:
+            return gamma_data.get("liquidity", 0.0)
         return 0.0
 
     def _days_to_resolve(self, market: Dict[str, Any]) -> int:

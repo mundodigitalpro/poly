@@ -2,6 +2,37 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.12.0] - 2026-01-30
+### Added
+- **Gamma API Integration**: New client for fetching volume and liquidity data from Polymarket's Gamma API.
+  - New file: `bot/gamma_client.py` with `GammaClient` class.
+  - Fetches: `volume24hr`, `volumeNum`, `liquidityNum`, `clobTokenIds`.
+  - Hybrid architecture: Gamma for market discovery, CLOB for trading.
+  - Configurable via `gamma_api.enabled` in `config.json`.
+
+- **Volume/Liquidity Filtering**: Scanner now filters markets by real volume data.
+  - New config: `market_filters.min_volume_24h` (default: $500).
+  - New config: `market_filters.min_liquidity` (default: $1000).
+  - Candidates now include `liquidity` field in output.
+
+- **Gamma Cache**: Pre-fetches Gamma data at start of each scan for performance.
+  - Maps by `condition_id` and `token_id` for fast lookups.
+  - Falls back to CLOB-only data if Gamma fails.
+
+- **Tests**: New `tests/test_gamma_client.py` with 13 tests covering:
+  - Normalization, filtering, edge cases, and integration.
+
+### Changed
+- **Market Scanner**: Modified `bot/market_scanner.py` to integrate Gamma data.
+  - New methods: `_prefetch_gamma_data()`, `_get_gamma_data()`, `_extract_liquidity()`.
+  - `_extract_volume_usd()` now prefers Gamma API data over CLOB.
+  - `_passes_metadata_filters()` now checks liquidity threshold.
+
+### Technical Details
+- Gamma API: `https://gamma-api.polymarket.com/markets`
+- Solves issue: CLOB API returns `volume=0.0` for all markets.
+- Implementation coordinated by CLAUDE following PROPOSAL_TRENDING_VOLUME.md.
+
 ## [0.11.5] - 2026-01-30
 ### Added
 - **Dual-Frequency Loop Architecture**: Separated position monitoring from market scanning.

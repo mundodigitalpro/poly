@@ -42,27 +42,31 @@ This repository is managed by a triad of agent contexts. **Consult these before 
   - 10+ safety protections.
 
 ## Current State (as of 2026-01-30)
-- **Version**: 0.11.5 (Beta)
+- **Version**: 0.12.0 (Beta)
 - **Phase 0 (Prep)**: Completed.
 - **Phase 1 (Core Modules)**: COMPLETED.
 - **Phase 2 (Integration & Testing)**: COMPLETED.
   - `main_bot.py`: Implemented and verified via dry run (`python main_bot.py --once`).
-  - **Unit Tests**: `tests/` added (strategy, position manager, stop loss emergency exit).
+  - **Unit Tests**: `tests/` added (strategy, position manager, stop loss emergency exit, gamma client).
   - **Optimization**: MarketScanner includes client-side rate limiting to avoid API throttling.
 - **Phase 2.5 (Scanner Hardening)**: COMPLETED (2026-01-30).
   - Coordinated by AMP (architect trial) with CODEX (developer).
   - 6 resilience fixes applied to `market_scanner.py`.
-  - All 7 tests passing.
+- **Phase 2.6 (Gamma API Integration)**: COMPLETED (2026-01-30).
+  - New: `bot/gamma_client.py` for volume/liquidity data.
+  - Modified: `bot/market_scanner.py` to use Gamma data.
+  - Config: `gamma_api.enabled`, `min_volume_24h`, `min_liquidity`.
+  - All 20 tests passing.
 - **Next Step**: Phase 3 (Validation Dry Run).
   - Task #13: Run bot for 2-4 hours in dry-run mode (~15-30 cycles).
 - Basic CLI (`poly_client.py`) functional.
-- Autonomous Bot is fully operational in dry-run mode.
+- Autonomous Bot is fully operational in dry-run mode with volume filtering.
 
-**Pending Proposals (for team review):**
-- `PROPOSAL_TRENDING_VOLUME.md`: Integrar Gamma API para datos de volumen/trending.
-  - Status: Awaiting review by CLAUDE/CODEX
-  - Author: AMP (architect trial)
-  - Priority: Medium
+**Implemented Proposals:**
+- `PROPOSAL_TRENDING_VOLUME.md`: Gamma API integration
+  - Status: ✅ IMPLEMENTED (v0.12.0)
+  - Author: AMP (proposed), CLAUDE (implemented)
+  - Files: `bot/gamma_client.py`, `bot/market_scanner.py`, `config.json`
 
 **Incident Report: Stop Loss Bug (2026-01-30)**
 - **Issue (RESOLVED)**: Stop Loss orders were blocked when price dropped >50% from entry due to `min_sell_ratio` safety check.

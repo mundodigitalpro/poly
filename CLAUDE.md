@@ -255,6 +255,43 @@ docker-compose logs -f
 - Stop Loss is an emergency exit - price floor makes no sense when you're cutting losses
 - Parameter name `is_emergency_exit` is semantic and self-documenting
 
+### 2026-01-30: Gamma API Integration for Volume/Liquidity
+
+**Problem**: CLOB API (`get_sampling_markets`) returns `volume=0.0` for all markets. Without volume data, the bot cannot filter by liquidity or score markets by trading activity.
+
+**Solution**: Integrated Gamma API (`https://gamma-api.polymarket.com`) for market discovery while keeping CLOB API for trading execution.
+
+**Architecture (Hybrid)**:
+```
+┌─────────────────────────────────────────────────┐
+│  1. Gamma API: Pre-fetch markets with volume    │
+│     GET /markets?active=true&closed=false       │
+│     Cache by condition_id and token_id          │
+│                                                 │
+│  2. CLOB API: Fetch orderbooks for verification │
+│     get_order_book(token_id)                    │
+│     Validate spread, liquidity                  │
+│                                                 │
+│  3. Trade execution: CLOB API only              │
+└─────────────────────────────────────────────────┘
+```
+
+**Implementation**:
+- `bot/gamma_client.py`: New client with `get_markets()`, `get_top_volume_markets()`
+- `bot/market_scanner.py`: Added `_prefetch_gamma_data()`, `_get_gamma_data()`, `_extract_liquidity()`
+- `config.json`: Added `gamma_api.enabled`, `market_filters.min_volume_24h`, `market_filters.min_liquidity`
+
+**Data Available from Gamma**:
+- `volume24hr`, `volumeNum` (total), `volume1wk`, `volume1mo`
+- `liquidityNum`, `bestBid`, `bestAsk`, `spread`
+- `clobTokenIds` (for mapping to CLOB API)
+
+**Design Rationale**:
+- Gamma is Polymarket's official market data API (more complete than CLOB)
+- CLOB is required for trading (Gamma has no trading endpoints)
+- Pre-fetching with cache minimizes API calls
+- Fallback to CLOB-only if Gamma fails (resilience)
+
 ## Security Considerations
 
 - Never commit `.env` file (already in `.gitignore`)

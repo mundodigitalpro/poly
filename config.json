@@ -17,12 +17,19 @@
     "max_odds": 0.70,
     "max_spread_percent": 5.0,
     "min_volume_usd": 100.0,
+    "min_volume_24h": 500,
+    "min_liquidity": 1000,
     "max_days_to_resolve": 30,
     "max_markets": 50,
     "source": "sampling_simplified",
     "allow_missing_resolution_date": true,
     "max_market_detail_fetch": 0,
     "treat_inactive_as_closed": true
+  },
+  "gamma_api": {
+    "enabled": true,
+    "base_url": "https://gamma-api.polymarket.com",
+    "cache_ttl_seconds": 300
   },
   "strategy": {
     "tp_sl_by_odds": {
