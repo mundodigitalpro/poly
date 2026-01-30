@@ -16,6 +16,20 @@ All notable changes to this project will be documented in this file.
   - `max_markets`: 150 → 200 (wider market scan)
   - `whale_tracking.enabled`: false → true (sentiment integration active)
 
+### Optimized (based on 21-trade analysis)
+- **Odds Range Narrowed**: Focus on profitable zone only.
+  - `min_odds`: 0.30 → **0.45**
+  - `max_odds`: 0.70 → **0.60**
+  - Analysis showed 0.50-0.60 was only profitable range (+$0.005 avg PnL)
+  - Extremes (0.30-0.40, 0.60-0.70) were losing money
+- **Stop Loss Margins Increased**: Give positions more room to recover.
+  - 0.30-0.40: 15% → 18%
+  - 0.40-0.50: 12% → 15%
+  - 0.50-0.60: 10% → 12%
+  - 0.60-0.70: 8% → 10%
+- **Whale Threshold Lowered**: Detect more trader activity.
+  - `whale_tracking.min_size`: $500 → **$100**
+
 ---
 
 ## [0.12.3] - 2026-01-30 (Evening)
