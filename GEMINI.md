@@ -42,7 +42,7 @@ This repository is managed by a triad of agent contexts. **Consult these before 
   - 10+ safety protections.
 
 ## Current State (as of 2026-01-30)
-- **Version**: 0.11.3 (Beta)
+- **Version**: 0.11.5 (Beta)
 - **Phase 0 (Prep)**: Completed.
 - **Phase 1 (Core Modules)**: COMPLETED.
 - **Phase 2 (Integration & Testing)**: COMPLETED.
@@ -57,6 +57,12 @@ This repository is managed by a triad of agent contexts. **Consult these before 
   - Task #13: Run bot for 2-4 hours in dry-run mode (~15-30 cycles).
 - Basic CLI (`poly_client.py`) functional.
 - Autonomous Bot is fully operational in dry-run mode.
+
+**Pending Proposals (for team review):**
+- `PROPOSAL_TRENDING_VOLUME.md`: Integrar Gamma API para datos de volumen/trending.
+  - Status: Awaiting review by CLAUDE/CODEX
+  - Author: AMP (architect trial)
+  - Priority: Medium
 
 **Incident Report: Stop Loss Bug (2026-01-30)**
 - **Issue (RESOLVED)**: Stop Loss orders were blocked when price dropped >50% from entry due to `min_sell_ratio` safety check.
