@@ -78,11 +78,15 @@ class MarketScanner:
             max_markets = self.max_markets
         self._detail_fetch_count = 0
 
-        # Pre-fetch Gamma data for volume/liquidity enrichment
+        # Use Gamma API as primary source if enabled (has volume data)
+        # Fall back to CLOB API if Gamma disabled or fails
         if self.gamma_enabled and self.gamma_client:
-            self._prefetch_gamma_data()
-
-        markets = self._fetch_markets(max_markets)
+            markets = self._fetch_gamma_markets(max_markets)
+            if not markets:
+                self.logger.warn("Gamma fetch failed, falling back to CLOB")
+                markets = self._fetch_markets(max_markets)
+        else:
+            markets = self._fetch_markets(max_markets)
         candidates: List[Dict[str, Any]] = []
         stats = {
             "closed": 0,
@@ -468,6 +472,51 @@ class MarketScanner:
                 return data[key]
         return None
 
+    def _fetch_gamma_markets(self, max_markets: int) -> List[Dict[str, Any]]:
+        """Fetch markets from Gamma API as primary source."""
+        self.logger.info("Fetching markets from Gamma API (primary source)...")
+        try:
+            min_vol = self.filters.get("min_volume_24h", 0)
+            min_liq = self.filters.get("min_liquidity", 0)
+
+            gamma_markets = self.gamma_client.get_top_volume_markets(
+                min_volume_24h=min_vol,
+                min_liquidity=min_liq,
+                limit=max_markets * 2,  # Fetch more, some will be filtered
+            )
+
+            # Convert Gamma format to scanner format
+            markets = []
+            for gm in gamma_markets[:max_markets]:
+                # Build token list from clob_token_ids
+                tokens = []
+                for i, token_id in enumerate(gm.get("clob_token_ids", [])):
+                    tokens.append({
+                        "token_id": str(token_id),
+                        "outcome": "Yes" if i == 0 else "No",
+                    })
+
+                markets.append({
+                    "condition_id": gm.get("condition_id"),
+                    "question": gm.get("question"),
+                    "tokens": tokens,
+                    "end_date_iso": gm.get("end_date"),
+                    "active": gm.get("active", True),
+                    "closed": gm.get("closed", False),
+                    # Include Gamma volume data directly
+                    "volume_24h": gm.get("volume_24h", 0),
+                    "volume_usd": gm.get("volume_total", 0),
+                    "liquidity": gm.get("liquidity", 0),
+                    "_gamma_data": gm,  # Keep full Gamma data for reference
+                })
+
+            self.logger.info(f"Gamma returned {len(markets)} markets with volume data")
+            return markets
+
+        except Exception as exc:
+            self.logger.warn(f"Gamma market fetch failed: {exc}")
+            return []
+
     def _prefetch_gamma_data(self) -> None:
         """Pre-fetch Gamma API data for volume enrichment."""
         if not self.gamma_client:
@@ -520,7 +569,11 @@ class MarketScanner:
 
     def _extract_volume_usd(self, market: Dict[str, Any]) -> float:
         """Extract volume in USD from market data, preferring Gamma API data."""
-        # Try Gamma API data first (more accurate)
+        # Check for direct Gamma data embedded in market (from _fetch_gamma_markets)
+        if "volume_24h" in market and market["volume_24h"] > 0:
+            return self._safe_float(market["volume_24h"])
+
+        # Try Gamma cache lookup (for CLOB-sourced markets)
         gamma_data = self._get_gamma_data(market)
         if gamma_data:
             vol_24h = gamma_data.get("volume_24h", 0)
@@ -532,7 +585,6 @@ class MarketScanner:
             "volume_usd",
             "volumeUSD",
             "volume",
-            "volume_24h",
             "volume24h",
             "volume24h_usd",
         ]
@@ -543,6 +595,11 @@ class MarketScanner:
 
     def _extract_liquidity(self, market: Dict[str, Any]) -> float:
         """Extract liquidity from Gamma API data."""
+        # Check for direct Gamma data embedded in market
+        if "liquidity" in market and market["liquidity"] > 0:
+            return self._safe_float(market["liquidity"])
+
+        # Try Gamma cache lookup
         gamma_data = self._get_gamma_data(market)
         if gamma_data:
             return gamma_data.get("liquidity", 0.0)
