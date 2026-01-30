@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from bot.position_manager import Position, PositionManager
 from bot.trader import BotTrader
@@ -61,7 +61,7 @@ def test_stop_loss_emergency_exit_allows_deep_drop(tmp_path):
         entry_price=1.0,
         size=10.0,
         filled_size=10.0,
-        entry_time=datetime.utcnow().isoformat(),
+        entry_time=datetime.now(timezone.utc).isoformat(),
         tp=1.2,
         sl=0.2,
     )

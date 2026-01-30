@@ -6,7 +6,7 @@ Main loop for the Polymarket autonomous trading bot.
 import argparse
 import os
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, Tuple
 
 from dotenv import load_dotenv
@@ -187,7 +187,7 @@ def _update_positions(
             logger.error(f"Sell failed for {position.token_id[:8]}...: {exc}")
             continue
 
-        exit_time = datetime.utcnow().isoformat()
+        exit_time = datetime.now(timezone.utc).isoformat()
         odds_range = strategy.get_odds_range(position.entry_price)
         position_manager.record_trade(
             entry_price=position.entry_price,
@@ -288,7 +288,7 @@ def _place_new_trade(
         size=size_shares,
     )
 
-    entry_time = datetime.utcnow().isoformat()
+    entry_time = datetime.now(timezone.utc).isoformat()
     position = Position(
         token_id=candidate["token_id"],
         entry_price=fill.avg_price,

@@ -2,7 +2,7 @@ import json
 import pytest
 from pathlib import Path
 from bot.position_manager import PositionManager, Position
-from datetime import datetime
+from datetime import datetime, timezone
 
 @pytest.fixture
 def pm(tmp_path):
@@ -15,7 +15,7 @@ def test_add_remove_position(pm):
         entry_price=0.5,
         size=10.0,
         filled_size=10.0,
-        entry_time=datetime.utcnow().isoformat(),
+        entry_time=datetime.now(timezone.utc).isoformat(),
         tp=0.6,
         sl=0.4
     )
@@ -43,8 +43,8 @@ def test_stats_recording(pm):
         exit_price=0.6,
         size=10.0,
         fees=0.1,
-        entry_time=datetime.utcnow().isoformat(),
-        exit_time=datetime.utcnow().isoformat(),
+        entry_time=datetime.now(timezone.utc).isoformat(),
+        exit_time=datetime.now(timezone.utc).isoformat(),
         odds_range="0.50-0.60"
     )
     stats = pm.get_stats()

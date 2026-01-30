@@ -7,8 +7,8 @@
     "scale_after_trades": 30
   },
   "risk": {
-    "max_positions": 5,
-    "cooldown_seconds": 300,
+    "max_positions": 10,
+    "cooldown_seconds": 60,
     "daily_loss_limit": 3.0,
     "min_sell_price_ratio": 0.5
   },
@@ -20,7 +20,7 @@
     "min_volume_24h": 500,
     "min_liquidity": 1000,
     "max_days_to_resolve": 30,
-    "max_markets": 50,
+    "max_markets": 150,
     "source": "sampling_simplified",
     "allow_missing_resolution_date": true,
     "max_market_detail_fetch": 0,
