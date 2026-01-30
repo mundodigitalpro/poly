@@ -102,9 +102,9 @@ Verifica que usas `signature_type=1` para Magic Link.
 
 ### Verificar configuración
 ```bash
-python verify_wallet.py
-python diagnose_config.py
-python test_all_sig_types.py
+python scripts/verify_wallet.py
+python scripts/diagnose_config.py
+python scripts/test_all_sig_types.py
 ```
 
 ## 🤖 Bot Autónomo (En Desarrollo)
@@ -132,28 +132,50 @@ Ver también: `CLAUDE.md` y `GEMINI.md` para contexto técnico del proyecto.
 
 ```
 poly/
-├── poly_client.py              # Cliente principal
+├── poly_client.py              # Cliente principal CLI
+├── main_bot.py                 # Bot autónomo (loop principal)
 ├── place_order.py              # Script para órdenes manuales
 ├── auto_sell.py                # Bot de auto-venta con protecciones
-├── main_bot.py                 # Bot autónomo (loop principal)
-├── generate_user_api_keys.py   # Genera API credentials
-├── verify_wallet.py            # Verifica wallet
-├── diagnose_config.py          # Diagnostica .env
-├── test_all_sig_types.py        # Prueba signature_type 0/1/2
 ├── config.json                 # Configuración del bot
-├── bot/                        # Módulos del bot
-├── data/                       # Datos runtime (positions, blacklist, stats)
-├── logs/                       # Logs diarios
+│
+├── bot/                        # Módulos core del bot
+│   ├── config.py               # Carga de configuración
+│   ├── gamma_client.py         # Cliente Gamma API (volumen/liquidez)
+│   ├── logger.py               # Sistema de logging
+│   ├── market_scanner.py       # Escaneo y scoring de mercados
+│   ├── position_manager.py     # Gestión de posiciones
+│   ├── strategy.py             # Lógica de estrategia (TP/SL)
+│   ├── trader.py               # Ejecución de órdenes
+│   └── whale_service.py        # Integración whale tracking
+│
+├── scripts/                    # Utilidades de setup
+│   ├── generate_user_api_keys.py
+│   ├── verify_wallet.py
+│   ├── diagnose_config.py
+│   └── test_all_sig_types.py
+│
+├── tools/                      # Herramientas de análisis
+│   ├── whale_tracker.py        # Tracker de ballenas
+│   ├── dutch_book_scanner.py   # Escaneo arbitraje YES/NO
+│   ├── negrisk_scanner.py      # Escaneo multi-outcome
+│   └── analyze_positions.py    # Análisis de riesgo
+│
+├── docs/                       # Documentación
+│   ├── bot_plan.md             # Diseño del bot autónomo
+│   ├── proposals/              # Propuestas de features
+│   └── team/                   # Docs del equipo AI
+│
 ├── tests/                      # Tests unitarios (pytest)
-├── bot_plan.md                 # Plan detallado del bot autónomo
-├── implementation_plan.md      # Plan general de desarrollo
-├── AGENTS.md                   # Guía para contribuciones
-├── CLAUDE.md                   # Guía para Claude Code
-├── GEMINI.md                   # Memoria para Gemini CLI
+├── data/                       # Datos runtime (positions, blacklist)
+├── logs/                       # Logs diarios
+│
+├── README.md                   # Este archivo
+├── CHANGELOG.md                # Historial de versiones
+├── AGENTS.md                   # Memoria Codex
+├── CLAUDE.md                   # Memoria Claude
+├── GEMINI.md                   # Memoria Gemini
 ├── .env                        # Credenciales (NO commitear)
-├── .env.example                # Plantilla
-├── Dockerfile                  # Docker
-└── docker-compose.yml          # Docker Compose
+└── .env.example                # Plantilla
 ```
 
 ## ✅ Testing

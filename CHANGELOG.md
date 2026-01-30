@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.12.3] - 2026-01-30 (Evening)
+### Changed
+- **Project Reorganization**: Restructured project for better maintainability.
+  - Created `scripts/` for utility scripts (`generate_user_api_keys.py`, `verify_wallet.py`, `diagnose_config.py`, `test_all_sig_types.py`)
+  - Created `tools/` for research & analysis (`whale_tracker.py`, `dutch_book_scanner.py`, `negrisk_scanner.py`, `analyze_positions.py`)
+  - Created `docs/` for documentation (`bot_plan.md`, `PLAN.md`, `PROMPT.md`, `HANDOFF.md`)
+  - Created `docs/proposals/` for feature proposals (`PROPOSAL_*.md`)
+  - Created `docs/team/` for team coordination docs (`AMP_*.md`, `TEAM_INSTRUCTIONS.md`)
+
+### Documentation
+- Updated `README.md` with new project structure
+- Updated `AGENTS.md`, `CLAUDE.md`, `GEMINI.md` with new file paths
+- All commands now reference correct paths (e.g., `scripts/verify_wallet.py`)
+
+---
+
 ## [0.12.2] - 2026-01-30 (Late Evening)
 ### Added
 - **Whale Tracking Integration**: Sentiment-based scoring from whale activity.

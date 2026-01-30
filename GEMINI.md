@@ -7,101 +7,65 @@ Four AI agents collaborate on this project:
 - **GEMINI.md** (this file): Current state tracking, quick commands, contextual memory.
 - **AGENTS.md** (Codex): Process guidelines, commit/PR standards, testing workflows.
 - **CLAUDE.md** (Claude): Technical architecture, auth details, implementation patterns.
-- **AMP** (New): Architect role (trial period). See `AMP_INSTRUCTIONS.md`.
-
-**Note**: AMP is in trial as substitute Architect. Runs in interactive mode only (no `-x` credits).
+- **AMP** (New): Architect role (trial period). See `docs/team/AMP_INSTRUCTIONS.md`.
 
 **Coordination**: Keep state updates here; refer to AGENTS.md for "how to", CLAUDE.md for "how it works".
 
 ## Project Overview
 A Python client and autonomous trading bot for Polymarket using `py-clob-client`.
 - **Repo**: `/home/josejordan/poly`
-- **Key Files**: `poly_client.py` (CLI), `bot_plan.md` (Bot Design), `place_order.py` (Manual Trading).
+- **Key Entry Points**: `poly_client.py` (CLI), `main_bot.py` (Bot), `place_order.py` (Manual), `auto_sell.py` (TP/SL)
 
-## Agent Ecosystem
-This repository is managed by a triad of agent contexts. **Consult these before acting**:
-1. **CODEX (`AGENTS.md`)**: The **Legislator**. Defines the "Law" of the repo: project structure, coding standards, and build/test commands.
-2. **CLAUDE (`CLAUDE.md`)**: The **Architect**. Holds deep technical knowledge: Auth flows (`signature_type`), API quirks, and the `bot_plan.md` architecture.
-3. **GEMINI (`GEMINI.md`)**: The **Operator** (You). Maintains active execution context, tracks progress, and implements solutions adhering to CODEX's rules and CLAUDE's designs.
+## Project Structure (v0.12.3)
+```
+poly/
+├── poly_client.py, main_bot.py, place_order.py, auto_sell.py  # Entry points
+├── config.json                 # Bot configuration
+├── bot/                        # Core modules (scanner, trader, strategy, etc.)
+├── scripts/                    # Utilities (generate_user_api_keys.py, verify_wallet.py, etc.)
+├── tools/                      # Analysis (whale_tracker.py, dutch_book_scanner.py, etc.)
+├── docs/                       # Documentation (bot_plan.md, proposals/, team/)
+├── tests/                      # Unit tests (pytest)
+├── data/                       # Runtime JSON (positions, blacklist, stats)
+├── logs/                       # Daily logs
+└── AGENTS.md, CLAUDE.md, GEMINI.md  # Agent memory files
+```
 
 ## Authentication & Configuration
 - **Magic Link (Gmail)**: Uses `signature_type=1`. Requires `POLY_FUNDER_ADDRESS` + `POLY_PRIVATE_KEY`.
 - **EOA (MetaMask)**: Uses `signature_type=0`. Requires only `POLY_PRIVATE_KEY`.
-- **Credentials**: Managed via `.env` (never commit!). Generate with `python generate_user_api_keys.py`.
+- **Credentials**: Managed via `.env` (never commit!). Generate with `python scripts/generate_user_api_keys.py`.
 
-## Development Guidelines (from AGENTS.md & CLAUDE.md)
-- **Style**: Python 4-space indent, snake_case.
-- **Commits**: Conventional Commits (feat, fix, docs).
-- **Safety**: 
-  - Never commit secrets.
-  - Verify `signature_type` matches wallet.
-  - Test with small amounts.
-- **Bot Plan**:
-  - Located in `bot_plan.md`.
-  - Phased rollout: Dry run -> Paper -> Micro -> Normal.
-  - 10+ safety protections.
-
-## Current State (as of 2026-01-30 17:45)
-- **Version**: 0.12.1 (Beta)
-- **Phase 0-2.6**: COMPLETED (see history below)
-- **Phase 2.7 (Arbitrage Research)**: COMPLETED (2026-01-30)
-  - Dutch Book: NOT VIABLE (HFT dominates)
-  - NegRisk Multi-outcome: NOT VIABLE (efficient markets)
-  - Whale Tracking: ✅ IMPLEMENTED
-- **Bot Status**: Running (PID 198163), dry-run mode, 10/10 positions active
-  - No TP/SL triggers yet, no errors in logs
-  - All positions have R/R 0.60-0.67, no immediate risk
+## Current State (as of 2026-01-30 18:05)
+- **Version**: 0.12.3 (Beta)
+- **Latest Change**: Project reorganization (scripts/, tools/, docs/ directories)
+- **Bot Status**: STOPPED
 - **Tests**: 20/20 passing
-- **New Proposal**: `PROPOSAL_WHALE_INTEGRATION.md` created by AMP
-- **Active Work**: Codex working on `bot/whale_service.py` implementation
-- **Next**: Wait for Codex to complete whale integration
-
-### New Tools Added (2026-01-30)
-| Tool | Purpose | Status |
-|------|---------|--------|
-| `dutch_book_scanner.py` | YES/NO arbitrage detection | Research complete |
-| `negrisk_scanner.py` | Multi-outcome arbitrage | Research complete |
-| `whale_tracker.py` | Whale trade tracking & copy signals | ✅ Production ready |
+- **Active Proposals**: `docs/proposals/PROPOSAL_WHALE_INTEGRATION.md`
 
 ### Phase History
-- **Phase 0 (Prep)**: Completed
-- **Phase 1 (Core Modules)**: Completed
-- **Phase 2 (Integration)**: Completed
-- **Phase 2.5 (Scanner Hardening)**: Completed
-- **Phase 2.6 (Gamma API)**: Completed
-- **Phase 2.7 (Arbitrage Research)**: Completed
+- **Phase 0-2.7**: COMPLETED (Core, Integration, Gamma API, Arbitrage Research)
 - **Next**: Phase 3 (Extended Dry Run) + Phase 2.8 (Whale Integration)
 
-**Implemented Proposals:**
-- `PROPOSAL_TRENDING_VOLUME.md`: Gamma API integration
-  - Status: ✅ IMPLEMENTED (v0.12.0)
-  - Author: AMP (proposed), CLAUDE (implemented)
-  - Files: `bot/gamma_client.py`, `bot/market_scanner.py`, `config.json`
-
-**Incident Report: Stop Loss Bug (2026-01-30)**
-- **Issue (RESOLVED)**: Stop Loss orders were blocked when price dropped >50% from entry due to `min_sell_ratio` safety check.
-- **Root Cause**: `execute_sell()` applied same price floor to all sells, including emergency exits.
-- **Fix Applied**: Added `is_emergency_exit` flag to bypass check for Stop Loss orders.
-- **Test**: `tests/test_stop_loss_emergency_exit.py` - PASSED.
-- **Coordination**: Claude (architecture) → Codex (implementation) → Gemini (verification).
-
-**Technical Report: Market Discovery Challenges**
-- **Issue (RESOLVED)**: Spread calculation was broken - orderbook returns bids sorted ascending and asks sorted descending, but code was taking first element (worst price).
-- **Fix Applied**: `market_scanner.py` now uses `max(bids)` and `min(asks)` to get correct best prices.
-- **Result**: Scanner now finds candidates with correct spreads (1-5%) instead of rejecting all with 196% spread.
-
-**Open Positions (5 active)**
-- All positions have reasonable entry prices (0.302 - 0.7)
-- No "toxic" positions detected at extreme low prices
-- Ready for dry-run verification with fixed Stop Loss logic
-
 ## Useful Commands
-- `python poly_client.py --balance`
-- `python poly_client.py --book <TOKEN_ID> --monitor`
-- `python generate_user_api_keys.py` (Fixes 401 errors)
-- `python main_bot.py --once` (single dry-run loop)
-- `python main_bot.py` (continuous dry run)
-- `python -m pytest` (requires `pip install pytest`)
+```bash
+python poly_client.py --balance             # Account status
+python poly_client.py --book <TOKEN_ID>     # Orderbook
+python main_bot.py --once                   # Single dry-run loop
+python main_bot.py                          # Continuous dry run
+python scripts/generate_user_api_keys.py   # Fix 401 errors
+python scripts/verify_wallet.py            # Verify wallet
+python tools/whale_tracker.py              # Whale tracking
+python tools/analyze_positions.py          # Position analysis
+python -m pytest                           # Run tests
+```
+
+## Inter-Agent Communication
+| Agent | How to Contact | Example |
+|-------|----------------|---------|
+| **Claude** | Running in separate terminal | Direct conversation |
+| **Codex** | `codex exec "msg" --full-auto` | `codex exec "Review this PR" --full-auto` |
+| **Gemini** | `gemini -p "msg" -o text` | `gemini -p "What's the project status?" -o text` |
 
 ## Inter-Agent Communication (Pair Programming)
 The three AI agents can communicate programmatically:

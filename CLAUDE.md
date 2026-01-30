@@ -101,13 +101,13 @@ The signature type is auto-detected in `poly_client.py:74` based on presence of 
    - Requires manual confirmation by default (`REQUIRE_CONFIRMATION = True`)
    - Enforces minimum acceptable price (`MIN_ACCEPTABLE`) to prevent panic sells
 
-4. **generate_user_api_keys.py**: Generates or retrieves API credentials
+4. **scripts/generate_user_api_keys.py**: Generates or retrieves API credentials
    - Must be run whenever credentials expire or are invalid
    - Derives wallet address for EOA users automatically
 
 ### Planned Architecture (Autonomous Bot)
 
-Located in `bot_plan.md` (526 lines, production-ready design), the autonomous bot implements:
+Located in `docs/bot_plan.md` (526 lines, production-ready design), the autonomous bot implements:
 
 **Market Selection** (all filters must pass):
 - Odds: 0.30-0.70 (uncertain markets)
@@ -152,7 +152,7 @@ Located in `bot_plan.md` (526 lines, production-ready design), the autonomous bo
 5. Execute trade → save position → update stats
 6. Repeat
 
-See `bot_plan.md` for complete implementation details including `config.json` structure, logging format, and error handling patterns.
+See `docs/bot_plan.md` for complete implementation details including `config.json` structure, logging format, and error handling patterns.
 
 ## Environment Setup
 
@@ -167,7 +167,7 @@ cp .env.example .env
 # Edit .env with your credentials (see Configuration section)
 
 # Generate API keys
-python generate_user_api_keys.py
+python scripts/generate_user_api_keys.py
 ```
 
 ## Configuration
@@ -211,11 +211,11 @@ python place_order.py
 python auto_sell.py
 
 # Regenerate API credentials
-python generate_user_api_keys.py
+python scripts/generate_user_api_keys.py
 
 # Verify configuration
-python verify_wallet.py
-python diagnose_config.py
+python scripts/verify_wallet.py
+python scripts/diagnose_config.py
 ```
 
 ## Docker Deployment
@@ -274,27 +274,27 @@ docker-compose logs -f
 - **Result**: NOT VIABLE
 - **Finding**: All markets have YES + NO ≥ 1.001 (no margin)
 - **Reason**: HFT bots capture opportunities in <50ms, market makers efficient
-- **Tool Created**: `dutch_book_scanner.py`
+- **Tool Created**: `tools/dutch_book_scanner.py`
 
 **2. NegRisk Multi-Outcome Arbitrage**
 - **Result**: NOT VIABLE
 - **Finding**: All multi-outcome events have Σ(NO) ≥ N-1
 - **Example**: Fed Chair (4 candidates) → Σ(NO) = 3.002 > $3.00 payout
-- **Tool Created**: `negrisk_scanner.py`
+- **Tool Created**: `tools/negrisk_scanner.py`
 
 **3. Whale Tracking / Copy Trading**
 - **Result**: VIABLE - Implemented
 - **API**: `https://data-api.polymarket.com/trades` (public, no auth)
 - **Data Available**: proxyWallet, side, size, price, timestamp, transactionHash
-- **Tool Created**: `whale_tracker.py`
+- **Tool Created**: `tools/whale_tracker.py`
 
 **Whale Tracker Features**:
 ```bash
-python whale_tracker.py                    # Recent whale trades
-python whale_tracker.py --leaderboard      # Top traders by volume
-python whale_tracker.py --signals          # Copy trading signals
-python whale_tracker.py --monitor          # Continuous monitoring
-python whale_tracker.py --track 0xABC...   # Track specific wallet
+python tools/whale_tracker.py                    # Recent whale trades
+python tools/whale_tracker.py --leaderboard      # Top traders by volume
+python tools/whale_tracker.py --signals          # Copy trading signals
+python tools/whale_tracker.py --monitor          # Continuous monitoring
+python tools/whale_tracker.py --track 0xABC...   # Track specific wallet
 ```
 
 **Key Findings**:

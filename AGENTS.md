@@ -10,16 +10,24 @@ This repository employs four AI agents with complementary roles:
 When contributing, consult the relevant memory file for your needs. Maintain consistency across all three files when updating shared information (auth, commands, bot status).
 
 ## Project Structure & Module Organization
-- Root-level Python scripts implement the client and automation: `poly_client.py` (CLI), `place_order.py` (manual orders), `auto_sell.py` (TP/SL safety bot), and `generate_user_api_keys.py` (API creds). Supporting utilities include `verify_wallet.py`, `diagnose_config.py`, and `test_all_sig_types.py`.
-- Documentation and plans live in `README.md`, `CLAUDE.md`, `bot_plan.md` (design only), and `implementation_plan.md`. The bot plan references planned state files like `positions.json`, `blacklist.json`, and `stats.json`.
-- Docker assets are in `Dockerfile` and `docker-compose.yml`. Secrets live in `.env` (see `.env.example`).
+
+The project is organized into logical directories:
+
+- **Root-level entry points**: `poly_client.py` (CLI), `main_bot.py` (bot), `place_order.py` (manual orders), `auto_sell.py` (TP/SL bot).
+- **`bot/`**: Core bot modules (`market_scanner.py`, `strategy.py`, `position_manager.py`, `trader.py`, `gamma_client.py`, `whale_service.py`).
+- **`scripts/`**: Setup utilities (`generate_user_api_keys.py`, `verify_wallet.py`, `diagnose_config.py`, `test_all_sig_types.py`).
+- **`tools/`**: Research & analysis (`whale_tracker.py`, `dutch_book_scanner.py`, `negrisk_scanner.py`, `analyze_positions.py`).
+- **`docs/`**: Documentation (`bot_plan.md`, `PLAN.md`, `HANDOFF.md`). Subdirectories: `proposals/` for feature proposals, `team/` for AI team docs.
+- **`tests/`**: Unit tests (pytest). **`data/`**: Runtime JSON files. **`logs/`**: Daily logs.
+- **Configuration**: `config.json` (bot params), `.env` (secrets), `.env.example` (template).
+- **Memory files**: `AGENTS.md` (Codex), `CLAUDE.md` (Claude), `GEMINI.md` (Gemini).
 
 ## Build, Test, and Development Commands
 - Create a venv and install deps:
   - `python3 -m venv venv` and `source venv/bin/activate`
   - `pip install -r requirements.txt`
 - Configure credentials: `cp .env.example .env`, then edit values.
-- Generate API keys: `python generate_user_api_keys.py`.
+- Generate API keys: `python scripts/generate_user_api_keys.py`.
 - Common workflows:
   - `python poly_client.py --balance` (account status; orders/trades)
   - `python poly_client.py --filter "Trump" --limit 10` (market discovery)
@@ -27,8 +35,10 @@ When contributing, consult the relevant memory file for your needs. Maintain con
   - `python poly_client.py --book <TOKEN_ID> --monitor --interval 5` (live book)
   - `python place_order.py` (manual order; edit constants first)
   - `python auto_sell.py` (auto-sell bot; review config)
-  - `python verify_wallet.py` and `python diagnose_config.py` (config checks)
-  - `python test_all_sig_types.py` (auth matrix test)
+  - `python scripts/verify_wallet.py` and `python scripts/diagnose_config.py` (config checks)
+  - `python scripts/test_all_sig_types.py` (auth matrix test)
+  - `python tools/whale_tracker.py` (whale tracking)
+  - `python tools/analyze_positions.py` (position risk analysis)
 - Docker: `docker-compose up --build -d` and `docker-compose logs -f`.
 
 ## Coding Style & Naming Conventions
