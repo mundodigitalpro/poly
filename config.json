@@ -18,10 +18,10 @@
     "max_spread_percent": 5.0,
     "min_volume_usd": 100.0,
     "max_days_to_resolve": 30,
-    "max_markets": 200,
+    "max_markets": 50,
     "source": "sampling_simplified",
     "allow_missing_resolution_date": true,
-    "max_market_detail_fetch": 50,
+    "max_market_detail_fetch": 0,
     "treat_inactive_as_closed": true
   },
   "strategy": {
@@ -56,12 +56,13 @@
   },
   "bot": {
     "loop_interval_seconds": 120,
+    "position_check_interval_seconds": 10,
     "order_timeout_seconds": 30,
     "dry_run": true,
     "log_level": "INFO"
   },
   "api": {
-    "max_calls_per_minute": 120,
+    "max_calls_per_minute": 300,
     "retry_attempts": 3,
     "retry_backoff_seconds": 5
   }

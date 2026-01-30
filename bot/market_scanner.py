@@ -5,6 +5,7 @@ Fetches markets, applies filters, and ranks candidates using the strategy score.
 """
 
 from datetime import datetime
+import time
 from typing import Any, Dict, List, Optional, Tuple
 
 from py_clob_client.constants import END_CURSOR
@@ -58,6 +59,7 @@ class MarketScanner:
         """
         if max_markets is None:
             max_markets = self.max_markets
+        self._detail_fetch_count = 0
         markets = self._fetch_markets(max_markets)
         candidates: List[Dict[str, Any]] = []
         stats = {
@@ -123,7 +125,11 @@ class MarketScanner:
         next_cursor = "MA=="
 
         while next_cursor != END_CURSOR and len(results) < max_markets:
-            resp = self._call_api(fetch_fn, next_cursor=next_cursor)
+            try:
+                resp = self._call_api(fetch_fn, next_cursor=next_cursor)
+            except Exception as exc:
+                self.logger.warn(f"Market fetch failed: {exc}")
+                return results
             if isinstance(resp, dict):
                 data = resp.get("data", [])
                 next_cursor = resp.get("next_cursor", END_CURSOR)
@@ -169,9 +175,9 @@ class MarketScanner:
         token_id = None
         for candidate_id in token_candidates:
             if self.position_manager.has_position(candidate_id):
-                return None, "has_position"
+                continue
             if self.position_manager.is_blacklisted(candidate_id):
-                return None, "blacklisted"
+                continue
             best_bid, best_ask = self._get_best_prices(candidate_id)
             if best_bid > 0 and best_ask > 0:
                 token_id = candidate_id
@@ -361,16 +367,23 @@ class MarketScanner:
                     token_ids.append(str(token_id))
 
         # Fallback to top-level token_id only if tokens list is missing
-        for key in ("clob_token_id", "clobTokenId", "token_id", "tokenId"):
-            if key in market:
-                value = str(market[key])
-                if self._is_valid_token_id(value):
-                    token_ids.append(value)
+        if not token_ids:
+            for key in ("clob_token_id", "clobTokenId", "token_id", "tokenId"):
+                if key in market:
+                    value = str(market[key])
+                    if self._is_valid_token_id(value):
+                        token_ids.append(value)
 
         condition_id = market.get("condition_id") or market.get("conditionId")
         if condition_id and self._detail_fetch_count < self.max_detail_fetch:
             self._detail_fetch_count += 1
-            detail = self._call_api(self.client.get_market, condition_id)
+            try:
+                detail = self._call_api(self.client.get_market, condition_id)
+            except Exception as exc:
+                self.logger.debug(
+                    f"Detail fetch failed for {condition_id}: {exc}"
+                )
+                detail = None
             if isinstance(detail, dict):
                 detail_tokens = detail.get("tokens") or []
                 if isinstance(detail_tokens, list):
@@ -516,12 +529,10 @@ class MarketScanner:
         """Simple client-side rate limiter."""
         if self.min_call_interval <= 0:
             return
-        now = datetime.utcnow().timestamp()
+        now = time.monotonic()
         elapsed = now - self._last_call_ts
         if elapsed < self.min_call_interval:
             delay = self.min_call_interval - elapsed
             self.logger.debug(f"Rate limit sleep: {delay:.2f}s")
-            from time import sleep
-
-            sleep(delay)
-        self._last_call_ts = datetime.utcnow().timestamp()
+            time.sleep(delay)
+        self._last_call_ts = time.monotonic()

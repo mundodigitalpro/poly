@@ -42,13 +42,17 @@ This repository is managed by a triad of agent contexts. **Consult these before 
   - 10+ safety protections.
 
 ## Current State (as of 2026-01-30)
-- **Version**: 0.11.1 (Beta)
+- **Version**: 0.11.3 (Beta)
 - **Phase 0 (Prep)**: Completed.
 - **Phase 1 (Core Modules)**: COMPLETED.
 - **Phase 2 (Integration & Testing)**: COMPLETED.
   - `main_bot.py`: Implemented and verified via dry run (`python main_bot.py --once`).
   - **Unit Tests**: `tests/` added (strategy, position manager, stop loss emergency exit).
   - **Optimization**: MarketScanner includes client-side rate limiting to avoid API throttling.
+- **Phase 2.5 (Scanner Hardening)**: COMPLETED (2026-01-30).
+  - Coordinated by AMP (architect trial) with CODEX (developer).
+  - 6 resilience fixes applied to `market_scanner.py`.
+  - All 7 tests passing.
 - **Next Step**: Phase 3 (Validation Dry Run).
   - Task #13: Run bot for 2-4 hours in dry-run mode (~15-30 cycles).
 - Basic CLI (`poly_client.py`) functional.

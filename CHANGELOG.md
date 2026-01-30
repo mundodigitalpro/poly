@@ -2,6 +2,40 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.11.5] - 2026-01-30
+### Added
+- **Dual-Frequency Loop Architecture**: Separated position monitoring from market scanning.
+  - Position check: Every 10 seconds (reactive to price changes).
+  - Market scan: Every 60-120 seconds (efficient API usage).
+  - New config parameter: `bot.position_check_interval_seconds`.
+  - Bot now monitors TP/SL conditions 6-12x more frequently than before.
+
+### Changed
+- **Performance Optimizations** (coordinated by AMP):
+  - Reduced `max_markets` from 200 to 50 (4x faster scans).
+  - Disabled detail fetches (`max_market_detail_fetch: 0`) to reduce API calls.
+  - Increased `max_calls_per_minute` to 300 for faster scanning.
+  - Market scan now completes in ~10 seconds instead of ~2 minutes.
+
+## [0.11.4] - 2026-01-30
+### Fixed
+- **Critical: Best Bid/Ask Extraction Bug in main_bot.py**: Fixed `_best_bid_ask()` using `orders[0]` which returned worst price (0.01) instead of best price.
+  - Root cause: Polymarket API returns bids sorted ascending (worst→best), so `bids[0]` = worst bid.
+  - Solution: Replaced `_extract_price()` with `_extract_best_bid()` using `max(prices)` and `_extract_best_ask()` using `min(prices)`.
+  - Impact: All positions were triggering false Stop Loss immediately after opening.
+  - Discovery: Dry-run showed 100% SL triggers at bid=0.01 despite entry at 0.30-0.70.
+
+## [0.11.3] - 2026-01-30
+### Fixed
+- **Market Scanner Resilience**: Multiple robustness improvements coordinated between AMP (architect) and CODEX (developer).
+  - `_fetch_markets`: Wrapped API calls in try/except; returns partial results on failure instead of aborting.
+  - `_analyze_market`: Token candidates with existing positions or blacklisted now `continue` to next candidate instead of rejecting entire market.
+  - `_extract_token_candidates`: Top-level token_id fallback now only used when token list is empty (matches comment intent).
+  - `_extract_token_candidates`: Detail fetch failures logged at debug level and gracefully handled.
+  - `_rate_limit`: Switched from `datetime.utcnow().timestamp()` to `time.monotonic()` for clock-jump resilience.
+  - `scan_markets`: Reset `_detail_fetch_count` at start of each scan to avoid stale limits.
+- **Tests**: All 7 tests passing after changes.
+
 ## [0.11.2] - 2026-01-30
 ### Changed
 - **Phase 3 Duration**: Reduced validation dry-run from 7 days to 2-4 hours (~15-30 cycles) for faster iteration.

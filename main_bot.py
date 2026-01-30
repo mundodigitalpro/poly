@@ -30,20 +30,35 @@ def _best_bid_ask(order_book) -> Tuple[float, float]:
         bids = book_dict.get("bids", [])
         asks = book_dict.get("asks", [])
 
-    best_bid = _extract_price(bids)
-    best_ask = _extract_price(asks)
+    best_bid = _extract_best_bid(bids)
+    best_ask = _extract_best_ask(asks)
     return best_bid, best_ask
 
 
-def _extract_price(orders, default: float = 0.0) -> float:
+def _extract_best_bid(orders, default: float = 0.0) -> float:
+    """Extract highest bid price (bids are sorted ascending, so best is last or max)."""
     if not orders:
         return default
-    top = orders[0]
-    if hasattr(top, "price"):
-        return float(top.price)
-    if isinstance(top, dict) and "price" in top:
-        return float(top["price"])
-    return default
+    prices = []
+    for order in orders:
+        if hasattr(order, "price"):
+            prices.append(float(order.price))
+        elif isinstance(order, dict) and "price" in order:
+            prices.append(float(order["price"]))
+    return max(prices) if prices else default
+
+
+def _extract_best_ask(orders, default: float = 0.0) -> float:
+    """Extract lowest ask price (asks may be sorted descending, so best is min)."""
+    if not orders:
+        return default
+    prices = []
+    for order in orders:
+        if hasattr(order, "price"):
+            prices.append(float(order.price))
+        elif isinstance(order, dict) and "price" in order:
+            prices.append(float(order["price"]))
+    return min(prices) if prices else default
 
 
 def _derive_funder(private_key: str) -> Optional[str]:
@@ -323,10 +338,12 @@ def run_loop():
     scanner = MarketScanner(client, config, logger, position_manager, strategy)
     trader = BotTrader(client, config, logger)
 
-    loop_interval = config.get("bot.loop_interval_seconds", 120)
+    scan_interval = config.get("bot.loop_interval_seconds", 120)
+    position_check_interval = config.get("bot.position_check_interval_seconds", 10)
     blacklist_cfg = config.get("blacklist", {})
 
     last_buy_ts = 0.0
+    last_scan_ts = 0.0
 
     logger.section("BOT STARTED")
 
@@ -343,11 +360,18 @@ def run_loop():
             blacklist_cfg,
         )
 
+        now = time.time()
+        time_since_scan = now - last_scan_ts
         can_trade, reason = _can_open_new_position(
             logger, position_manager, config, last_buy_ts
         )
+
+        should_scan = can_trade and time_since_scan >= scan_interval
+
         if not can_trade:
             logger.info(f"Skipping new trade: {reason}")
+        elif not should_scan:
+            logger.info(f"Waiting for scan interval ({int(scan_interval - time_since_scan)}s remaining)")
         else:
             fill = _place_new_trade(
                 client,
@@ -358,14 +382,15 @@ def run_loop():
                 strategy,
                 config,
             )
+            last_scan_ts = time.time()
             if fill:
                 last_buy_ts = time.time()
 
         if args.once:
             break
 
-        logger.info(f"Sleeping {loop_interval}s")
-        time.sleep(loop_interval)
+        logger.info(f"Checking positions in {position_check_interval}s")
+        time.sleep(position_check_interval)
 
 
 if __name__ == "__main__":
