@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.12.4] - 2026-01-30 (Night)
+### Fixed
+- **Critical: Datetime Timezone Bug in Position Manager**: Fixed `TypeError: can't subtract offset-naive and offset-aware datetimes`.
+  - Root cause: `entry_time` was stored without timezone but `exit_time` was generated with timezone.
+  - Solution: Normalize both datetimes by stripping timezone info before subtraction in `record_trade()`.
+  - File: `bot/position_manager.py` lines 301-309.
+  - Bug was discovered during Stop Loss trigger in extended dry-run.
+
+### Changed
+- **Extended Dry Run Parameters**: Expanded test configuration.
+  - `max_positions`: 10 → 20 (more concurrent positions for testing)
+  - `max_markets`: 150 → 200 (wider market scan)
+  - `whale_tracking.enabled`: false → true (sentiment integration active)
+
+---
+
 ## [0.12.3] - 2026-01-30 (Evening)
 ### Changed
 - **Project Reorganization**: Restructured project for better maintainability.

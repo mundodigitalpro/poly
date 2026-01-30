@@ -7,7 +7,7 @@
     "scale_after_trades": 30
   },
   "risk": {
-    "max_positions": 10,
+    "max_positions": 20,
     "cooldown_seconds": 60,
     "daily_loss_limit": 3.0,
     "min_sell_price_ratio": 0.5
@@ -20,7 +20,7 @@
     "min_volume_24h": 500,
     "min_liquidity": 1000,
     "max_days_to_resolve": 30,
-    "max_markets": 150,
+    "max_markets": 200,
     "source": "sampling_simplified",
     "allow_missing_resolution_date": true,
     "max_market_detail_fetch": 0,
@@ -32,7 +32,7 @@
     "cache_ttl_seconds": 300
   },
   "whale_tracking": {
-    "enabled": false,
+    "enabled": true,
     "min_size": 500,
     "score_weight": 0.2,
     "alert_on_sell": true

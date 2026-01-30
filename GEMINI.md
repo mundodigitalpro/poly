@@ -36,16 +36,17 @@ poly/
 - **EOA (MetaMask)**: Uses `signature_type=0`. Requires only `POLY_PRIVATE_KEY`.
 - **Credentials**: Managed via `.env` (never commit!). Generate with `python scripts/generate_user_api_keys.py`.
 
-## Current State (as of 2026-01-30 18:05)
-- **Version**: 0.12.3 (Beta)
-- **Latest Change**: Project reorganization (scripts/, tools/, docs/ directories)
-- **Bot Status**: STOPPED
+## Current State (as of 2026-01-30 18:51)
+- **Version**: 0.12.4 (Beta)
+- **Latest Change**: Fixed datetime timezone bug in position_manager.py
+- **Bot Status**: RUNNING (dry-run)
 - **Tests**: 20/20 passing
-- **Active Proposals**: `docs/proposals/PROPOSAL_WHALE_INTEGRATION.md`
+- **Whale Tracking**: ✅ ENABLED (min_size: $500, weight: 0.2)
+- **Config**: max_positions=20, max_markets=200
 
 ### Phase History
-- **Phase 0-2.7**: COMPLETED (Core, Integration, Gamma API, Arbitrage Research)
-- **Next**: Phase 3 (Extended Dry Run) + Phase 2.8 (Whale Integration)
+- **Phase 0-2.8**: COMPLETED (Core, Integration, Gamma API, Arbitrage Research, Whale Integration)
+- **Current**: Phase 3 (Extended Dry Run with whale sentiment)
 
 ## Useful Commands
 ```bash

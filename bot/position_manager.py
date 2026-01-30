@@ -298,9 +298,14 @@ class PositionManager:
         pnl = (exit_price - entry_price) * size - fees
         is_win = pnl > 0
 
-        # Calculate hold time
+        # Calculate hold time (normalize both to naive datetimes)
         entry_dt = datetime.fromisoformat(entry_time)
         exit_dt = datetime.fromisoformat(exit_time)
+        # Strip timezone info if present to avoid offset-aware/naive mismatch
+        if entry_dt.tzinfo is not None:
+            entry_dt = entry_dt.replace(tzinfo=None)
+        if exit_dt.tzinfo is not None:
+            exit_dt = exit_dt.replace(tzinfo=None)
         hold_hours = (exit_dt - entry_dt).total_seconds() / 3600
 
         # Update lifetime stats
