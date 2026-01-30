@@ -431,8 +431,8 @@ Todos estos parámetros deben ser fácilmente ajustables sin modificar código.
 10. [x] Implementar `main_bot.py` con loop principal
 11. [x] Implementar modo `DRY_RUN = True`
 12. [x] Testing unitario de cada módulo
-13. [ ] **CRÍTICO**: Correr 7 días en modo dry run
-13. [ ] **CRÍTICO**: Correr 7 días en modo dry run
+13. [ ] **CRÍTICO**: Correr 2-4 horas en modo dry run (~15-30 ciclos)
+13. [ ] **CRÍTICO**: Correr 2-4 horas en modo dry run (~15-30 ciclos)
     - [ ] Verificar que loguea correctamente
     - [ ] Verificar que selecciona mercados apropiados
     - [ ] Verificar que cálculos de TP/SL son correctos
@@ -519,7 +519,7 @@ Todos estos parámetros deben ser fácilmente ajustables sin modificar código.
 - **Tiempo hasta breakeven**: 2-3 meses probablemente
 
 **Recomendación crítica**:
-1. Comenzar con modo "dry run" por 1 semana mínimo
+1. Comenzar con modo "dry run" por 2-4 horas mínimo (~15-30 ciclos)
 2. Micro trading ($0.25) por 20-30 trades antes de escalar
 3. Solo operar capital que puedas perder 100%
 4. Monitorear diariamente los primeros 2 meses

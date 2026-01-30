@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.11.2] - 2026-01-30
+### Changed
+- **Phase 3 Duration**: Reduced validation dry-run from 7 days to 2-4 hours (~15-30 cycles) for faster iteration.
+
 ## [0.11.1] - 2026-01-30
 ### Fixed
 - **Critical: Stop Loss Execution Bug**: Fixed issue where Stop Loss orders were blocked when price dropped >50% from entry.
