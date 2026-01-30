@@ -67,6 +67,11 @@
     "duration_days": 3,
     "max_attempts": 2
   },
+  "trading": {
+    "use_concurrent_orders": false,
+    "order_check_interval_seconds": 30,
+    "cancel_timeout_seconds": 5
+  },
   "bot": {
     "loop_interval_seconds": 120,
     "position_check_interval_seconds": 10,
