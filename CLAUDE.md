@@ -8,22 +8,26 @@ This repository uses multiple AI agents with specialized focuses:
 - **CLAUDE.md** (this file): Technical architecture, implementation patterns, and deep-dive into critical flows
 - **AGENTS.md** (Codex): Process guidelines, commit standards, testing workflows, and coding conventions
 - **GEMINI.md** (Gemini): Current state tracking, quick command reference, and contextual memory
+- **KIMI** (New): Fast code review and analysis tasks
 - **AMP** (Trial): Substitute Architect during evaluation period. See `AMP_INSTRUCTIONS.md`
 
-When making changes, ensure consistency across all three memory files. Each agent brings unique value:
+When making changes, ensure consistency across all memory files. Each agent brings unique value:
 - Use **AGENTS.md** for procedural questions (how to test, commit format, style guide)
 - Use **GEMINI.md** for current state (what's implemented, what's pending, quick commands)
 - Use **CLAUDE.md** for technical questions (how auth works, why signature_type matters, bot architecture)
+- Use **KIMI** for quick code reviews and analysis tasks
 
 ## Inter-Agent Communication (Pair Programming)
 
-The three AI agents can communicate programmatically via their CLI tools in non-interactive mode:
+The AI agents can communicate programmatically via their CLI tools in non-interactive mode:
 
 | Agent | Model | CLI Command | Non-Interactive Mode |
 |-------|-------|-------------|---------------------|
 | **Claude** | Opus 4.5 | `claude` | Already in session (this agent) |
 | **Codex** | GPT-5.2 | `codex` | `codex exec "prompt" --full-auto` |
 | **Gemini** | Gemini | `gemini` | `gemini -p "prompt" -o text` |
+| **Kimi** | Moonshot | `kimi` | `kimi -p "prompt" --quiet -y` |
+| **AMP** | - | `amp` | `amp -x "prompt"` (requires credits) |
 
 ### How to Communicate with Other Agents
 
@@ -39,6 +43,13 @@ codex exec "Review market_scanner.py" --full-auto -o /tmp/codex_response.txt
 gemini -p "Your message here" -o text
 # With auto-approval for actions:
 gemini -p "Check project status" -o text -y
+```
+
+**To Kimi** (quick code analysis, reviews):
+```bash
+kimi -p "Your message here" --quiet -y
+# Alternative with full output:
+kimi -p "Review this function" --print -y
 ```
 
 ### Coordination Patterns
