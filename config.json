@@ -69,8 +69,13 @@
   },
   "trading": {
     "use_concurrent_orders": false,
+    "use_websocket": false,
+    "use_gasless": false,
     "order_check_interval_seconds": 30,
-    "cancel_timeout_seconds": 5
+    "cancel_timeout_seconds": 5,
+    "websocket_reconnect_delay": 5,
+    "websocket_ping_interval": 30,
+    "websocket_max_reconnects": 10
   },
   "bot": {
     "loop_interval_seconds": 120,
