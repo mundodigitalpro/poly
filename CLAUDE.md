@@ -8,6 +8,7 @@ This repository uses multiple AI agents with specialized focuses:
 - **CLAUDE.md** (this file): Technical architecture, implementation patterns, and deep-dive into critical flows
 - **AGENTS.md** (Codex): Process guidelines, commit standards, testing workflows, and coding conventions
 - **GEMINI.md** (Gemini): Current state tracking, quick command reference, and contextual memory
+- **AMP** (Trial): Substitute Architect during evaluation period. See `AMP_INSTRUCTIONS.md`
 
 When making changes, ensure consistency across all three memory files. Each agent brings unique value:
 - Use **AGENTS.md** for procedural questions (how to test, commit format, style guide)

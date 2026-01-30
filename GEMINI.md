@@ -3,10 +3,13 @@
 This file serves as the long-term memory for the Gemini CLI agent working on the Polymarket Python Client project.
 
 ## Multi-Agent Team Setup
-Three AI agents collaborate on this project:
+Four AI agents collaborate on this project:
 - **GEMINI.md** (this file): Current state tracking, quick commands, contextual memory.
 - **AGENTS.md** (Codex): Process guidelines, commit/PR standards, testing workflows.
 - **CLAUDE.md** (Claude): Technical architecture, auth details, implementation patterns.
+- **AMP** (New): Architect role (trial period). See `AMP_INSTRUCTIONS.md`.
+
+**Note**: AMP is in trial as substitute Architect. Runs in interactive mode only (no `-x` credits).
 
 **Coordination**: Keep state updates here; refer to AGENTS.md for "how to", CLAUDE.md for "how it works".
 

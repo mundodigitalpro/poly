@@ -1,10 +1,11 @@
 # Repository Guidelines
 
 ## Multi-Agent Development Team
-This repository employs three AI agents with complementary roles:
+This repository employs four AI agents with complementary roles:
 - **AGENTS.md** (Codex, this file): Process guidelines, development workflows, commit standards, coding conventions, and testing procedures.
 - **CLAUDE.md** (Claude): Technical architecture, authentication flows, implementation patterns, and deep technical details.
 - **GEMINI.md** (Gemini): Current project state, progress tracking, quick command reference, and contextual memory.
+- **AMP** (Trial): Substitute Architect role during evaluation. Instructions in `AMP_INSTRUCTIONS.md`. Interactive mode only.
 
 When contributing, consult the relevant memory file for your needs. Maintain consistency across all three files when updating shared information (auth, commands, bot status).
 
