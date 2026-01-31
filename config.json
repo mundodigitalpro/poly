@@ -68,8 +68,8 @@
     "max_attempts": 2
   },
   "trading": {
-    "use_concurrent_orders": false,
-    "use_websocket": false,
+    "use_concurrent_orders": true,
+    "use_websocket": true,
     "use_gasless": false,
     "order_check_interval_seconds": 30,
     "cancel_timeout_seconds": 5,
