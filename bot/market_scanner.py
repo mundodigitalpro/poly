@@ -256,6 +256,14 @@ class MarketScanner:
                     f"(score adjusted: {score:.2f})"
                 )
 
+        # Log accepted candidate with key metrics
+        self.logger.info(
+            f"✓ Candidate: {question[:60]}... | "
+            f"token={token_id[:8]}... | odds={odds:.2f} | "
+            f"spread={spread_percent:.1f}% | days={days_to_resolve} | "
+            f"score={score:.1f}"
+        )
+
         return {
             "token_id": token_id,
             "question": question,
@@ -283,6 +291,7 @@ class MarketScanner:
         min_volume = self.filters.get("min_volume_usd", 100.0)
         min_volume_24h = self.filters.get("min_volume_24h", 0)
         min_liquidity = self.filters.get("min_liquidity", 0)
+        min_days = self.filters.get("min_days_to_resolve", 2)
         max_days = self.filters.get("max_days_to_resolve", 30)
         _ = (min_odds, max_odds, max_spread)
 
@@ -301,8 +310,16 @@ class MarketScanner:
             )
             return False
 
+        # Resolution date checks
         if days_to_resolve == 9999 and self.allow_missing_resolution:
             return True
+
+        # CRITICAL: Reject markets resolving too soon (avoid resolved markets)
+        if days_to_resolve < min_days:
+            self.logger.info(
+                f"Rejected {token_id[:8]}: resolves too soon (days={days_to_resolve} < {min_days})"
+            )
+            return False
 
         if days_to_resolve > max_days:
             self.logger.debug(
@@ -668,10 +685,15 @@ class MarketScanner:
     def _is_closed(self, market: Dict[str, Any]) -> Tuple[bool, str]:
         """Detect closed/resolved markets."""
         status = str(market.get("status", "")).lower()
-        if status in ("closed", "resolved", "settled"):
+        if status in ("closed", "resolved", "settled", "finalized"):
             return True, "closed_status"
 
+        # Check explicit closed flag
         closed = market.get("closed")
+        if closed is True:
+            return True, "closed_flag"
+
+        # Check active flag
         active = market.get("active")
         active_normalized = active
         if isinstance(active, str):
@@ -681,11 +703,22 @@ class MarketScanner:
             elif active_normalized in ("false", "0", "no"):
                 active_normalized = False
 
+        # Market is closed if both closed=True and active=False
         if closed is True and active_normalized is False:
             return True, "closed_flag"
 
+        # Treat inactive markets as closed (configurable)
         if self.treat_inactive_as_closed and active_normalized is False:
             return True, "inactive_flag"
+
+        # CRITICAL: Check if market is past its resolution date
+        # This catches markets that resolved but aren't marked as closed yet
+        days_to_resolve = self._days_to_resolve(market)
+        if days_to_resolve < 0:  # Negative = past resolution date
+            self.logger.info(
+                f"Rejected market: past resolution date (days={days_to_resolve})"
+            )
+            return True, "closed_status"
 
         return False, "ok"
 

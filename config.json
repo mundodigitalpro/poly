@@ -19,6 +19,7 @@
     "min_volume_usd": 100.0,
     "min_volume_24h": 500,
     "min_liquidity": 1000,
+    "min_days_to_resolve": 2,
     "max_days_to_resolve": 30,
     "max_markets": 150,
     "source": "sampling_simplified",
@@ -66,6 +67,16 @@
   "blacklist": {
     "duration_days": 3,
     "max_attempts": 2
+  },
+  "trading": {
+    "use_concurrent_orders": true,
+    "use_websocket": true,
+    "use_gasless": false,
+    "order_check_interval_seconds": 30,
+    "cancel_timeout_seconds": 5,
+    "websocket_reconnect_delay": 5,
+    "websocket_ping_interval": 30,
+    "websocket_max_reconnects": 10
   },
   "bot": {
     "loop_interval_seconds": 120,

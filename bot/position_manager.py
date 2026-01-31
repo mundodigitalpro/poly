@@ -28,6 +28,10 @@ class Position:
         sl: float,
         fees_paid: float = 0.0,
         order_id: Optional[str] = None,
+        # New fields for concurrent order management
+        tp_order_id: Optional[str] = None,
+        sl_order_id: Optional[str] = None,
+        exit_mode: str = "monitor",  # "monitor" or "limit_orders"
     ):
         self.token_id = token_id
         self.entry_price = entry_price
@@ -38,6 +42,10 @@ class Position:
         self.sl = sl
         self.fees_paid = fees_paid
         self.order_id = order_id
+        # Concurrent order fields
+        self.tp_order_id = tp_order_id
+        self.sl_order_id = sl_order_id
+        self.exit_mode = exit_mode
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert position to dictionary for JSON serialization."""
@@ -50,6 +58,10 @@ class Position:
             "sl": self.sl,
             "fees_paid": self.fees_paid,
             "order_id": self.order_id,
+            # Concurrent order fields
+            "tp_order_id": self.tp_order_id,
+            "sl_order_id": self.sl_order_id,
+            "exit_mode": self.exit_mode,
         }
 
     @staticmethod
@@ -65,14 +77,19 @@ class Position:
             sl=data["sl"],
             fees_paid=data.get("fees_paid", 0.0),
             order_id=data.get("order_id"),
+            # Concurrent order fields (with backwards compatibility)
+            tp_order_id=data.get("tp_order_id"),
+            sl_order_id=data.get("sl_order_id"),
+            exit_mode=data.get("exit_mode", "monitor"),  # Default to legacy monitoring
         )
 
     def __repr__(self) -> str:
+        mode_str = f" mode={self.exit_mode}" if self.exit_mode == "limit_orders" else ""
         return (
             f"Position(token={self.token_id[:8]}..., "
             f"entry=${self.entry_price:.2f}, "
             f"size={self.filled_size}/{self.size}, "
-            f"tp=${self.tp:.2f}, sl=${self.sl:.2f})"
+            f"tp=${self.tp:.2f}, sl=${self.sl:.2f}{mode_str})"
         )
 
 
