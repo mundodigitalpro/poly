@@ -142,14 +142,15 @@ class PolymarketWebSocket:
         unique_tokens = list(set(self.subscribed_tokens))
         self.subscribed_tokens = unique_tokens
 
-        for token_id in token_ids:
-            message = {"type": "subscribe", "channel": "market", "markets": [token_id]}
+        # Send single message with all token IDs (Polymarket format)
+        message = {"assets_ids": token_ids, "type": "market"}
 
-            try:
-                await self.ws.send(json.dumps(message))
+        try:
+            await self.ws.send(json.dumps(message))
+            for token_id in token_ids:
                 self.logger.info(f"Subscribed to {token_id[:8]}...")
-            except Exception as exc:
-                self.logger.error(f"Failed to subscribe to {token_id}: {exc}")
+        except Exception as exc:
+            self.logger.error(f"Failed to subscribe: {exc}")
 
     async def unsubscribe(self, token_ids: List[str]):
         """
@@ -161,24 +162,14 @@ class PolymarketWebSocket:
         if not self.ws:
             return
 
+        # Note: Polymarket WebSocket doesn't seem to support unsubscribe
+        # Instead, we just remove from our tracking
         for token_id in token_ids:
-            message = {
-                "type": "unsubscribe",
-                "channel": "market",
-                "markets": [token_id],
-            }
-
-            try:
-                await self.ws.send(json.dumps(message))
-                self.logger.info(f"Unsubscribed from {token_id[:8]}...")
-
-                if token_id in self.subscribed_tokens:
-                    self.subscribed_tokens.remove(token_id)
-                if token_id in self.orderbooks:
-                    del self.orderbooks[token_id]
-
-            except Exception as exc:
-                self.logger.error(f"Failed to unsubscribe from {token_id}: {exc}")
+            if token_id in self.subscribed_tokens:
+                self.subscribed_tokens.remove(token_id)
+            if token_id in self.orderbooks:
+                del self.orderbooks[token_id]
+            self.logger.info(f"Unsubscribed from {token_id[:8]}... (local only)")
 
     async def run(self, auto_reconnect: bool = True):
         """
