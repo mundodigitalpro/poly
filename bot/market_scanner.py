@@ -429,6 +429,186 @@ class MarketScanner:
         mid = (bid + ask) / 2
         return ((ask - bid) / mid) * 100
 
+    # ========================================================================
+    # WALK THE BOOK (VWAP) - Slippage calculation
+    # ========================================================================
+
+    def walk_the_book(
+        self, token_id: str, size: float, side: str = "buy"
+    ) -> Tuple[float, float, float]:
+        """
+        Calculate VWAP (Volume Weighted Average Price) for a given order size.
+
+        "Walks" through the orderbook to determine the actual average price
+        you'd pay/receive when filling an order of the specified size.
+
+        Args:
+            token_id: Token to analyze
+            size: Order size in shares
+            side: "buy" (walk asks) or "sell" (walk bids)
+
+        Returns:
+            Tuple of (vwap, filled_size, slippage_percent)
+            - vwap: Volume weighted average price
+            - filled_size: How much of the order could be filled
+            - slippage_percent: Slippage vs best price (0 = no slippage)
+        """
+        try:
+            order_book = self._call_api(self.client.get_order_book, token_id)
+        except Exception as exc:
+            self.logger.warn(f"Failed to get orderbook for VWAP: {exc}")
+            return 0.0, 0.0, 0.0
+
+        bids = getattr(order_book, "bids", None)
+        asks = getattr(order_book, "asks", None)
+
+        if bids is None or asks is None:
+            if hasattr(order_book, "to_dict"):
+                book_dict = order_book.to_dict()
+                bids = book_dict.get("bids", [])
+                asks = book_dict.get("asks", [])
+            else:
+                bids = []
+                asks = []
+
+        if side == "buy":
+            # Walking asks (lowest to highest)
+            orders = self._parse_orders(asks, ascending=True)
+            best_price = min(o[0] for o in orders) if orders else 0.0
+        else:
+            # Walking bids (highest to lowest)
+            orders = self._parse_orders(bids, ascending=False)
+            best_price = max(o[0] for o in orders) if orders else 0.0
+
+        if not orders or best_price <= 0:
+            return 0.0, 0.0, 0.0
+
+        vwap, filled = self._calculate_vwap(orders, size)
+
+        if vwap <= 0 or best_price <= 0:
+            slippage = 0.0
+        elif side == "buy":
+            # For buys, slippage is how much more we pay vs best ask
+            slippage = ((vwap - best_price) / best_price) * 100
+        else:
+            # For sells, slippage is how much less we receive vs best bid
+            slippage = ((best_price - vwap) / best_price) * 100
+
+        return vwap, filled, max(0.0, slippage)
+
+    def _parse_orders(self, orders: Any, ascending: bool = True) -> List[Tuple[float, float]]:
+        """
+        Parse orderbook orders into (price, size) tuples.
+
+        Args:
+            orders: Raw orders from API
+            ascending: Sort by price ascending (for asks) or descending (for bids)
+
+        Returns:
+            List of (price, size) tuples sorted appropriately
+        """
+        parsed = []
+        for order in orders:
+            price = self._get_order_price(order)
+            size = self._get_order_size(order)
+            if price > 0 and size > 0:
+                parsed.append((price, size))
+
+        # Sort: asks ascending (best = lowest), bids descending (best = highest)
+        parsed.sort(key=lambda x: x[0], reverse=not ascending)
+        return parsed
+
+    def _get_order_size(self, order: Any) -> float:
+        """Extract size from an order object or dict."""
+        if hasattr(order, "size"):
+            try:
+                return float(order.size)
+            except (TypeError, ValueError):
+                return 0.0
+        if isinstance(order, dict) and "size" in order:
+            try:
+                return float(order["size"])
+            except (TypeError, ValueError):
+                return 0.0
+        return 0.0
+
+    def _calculate_vwap(
+        self, orders: List[Tuple[float, float]], target_size: float
+    ) -> Tuple[float, float]:
+        """
+        Calculate Volume Weighted Average Price by walking through orders.
+
+        Args:
+            orders: List of (price, size) tuples, sorted by price
+            target_size: Target order size to fill
+
+        Returns:
+            Tuple of (vwap, filled_size)
+        """
+        if not orders or target_size <= 0:
+            return 0.0, 0.0
+
+        filled = 0.0
+        total_cost = 0.0
+
+        for price, available_size in orders:
+            take = min(available_size, target_size - filled)
+            total_cost += take * price
+            filled += take
+
+            if filled >= target_size:
+                break
+
+        if filled <= 0:
+            return 0.0, 0.0
+
+        vwap = total_cost / filled
+        return round(vwap, 6), round(filled, 6)
+
+    def get_orderbook_depth(self, token_id: str) -> Dict[str, Any]:
+        """
+        Get full orderbook depth analysis for a token.
+
+        Returns:
+            Dict with bid/ask depth, total liquidity, and price levels
+        """
+        try:
+            order_book = self._call_api(self.client.get_order_book, token_id)
+        except Exception as exc:
+            self.logger.warn(f"Failed to get orderbook depth: {exc}")
+            return {"error": str(exc)}
+
+        bids = getattr(order_book, "bids", []) or []
+        asks = getattr(order_book, "asks", []) or []
+
+        if hasattr(order_book, "to_dict"):
+            book_dict = order_book.to_dict()
+            bids = book_dict.get("bids", [])
+            asks = book_dict.get("asks", [])
+
+        bid_orders = self._parse_orders(bids, ascending=False)
+        ask_orders = self._parse_orders(asks, ascending=True)
+
+        total_bid_size = sum(size for _, size in bid_orders)
+        total_ask_size = sum(size for _, size in ask_orders)
+        total_bid_value = sum(price * size for price, size in bid_orders)
+        total_ask_value = sum(price * size for price, size in ask_orders)
+
+        return {
+            "token_id": token_id,
+            "bid_levels": len(bid_orders),
+            "ask_levels": len(ask_orders),
+            "total_bid_size": round(total_bid_size, 2),
+            "total_ask_size": round(total_ask_size, 2),
+            "total_bid_value_usd": round(total_bid_value, 2),
+            "total_ask_value_usd": round(total_ask_value, 2),
+            "best_bid": bid_orders[0][0] if bid_orders else 0.0,
+            "best_ask": ask_orders[0][0] if ask_orders else 0.0,
+            "imbalance": round(
+                (total_bid_size - total_ask_size) / max(total_bid_size + total_ask_size, 1), 2
+            ),
+        }
+
     def _extract_token_candidates(self, market: Dict[str, Any]) -> List[str]:
         """Extract candidate token IDs from market data."""
         token_ids: List[str] = []

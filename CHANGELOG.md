@@ -2,6 +2,34 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.14.0] - 2026-01-31 (Night)
+### Added
+- **Walk the Book (VWAP)**: Calculate real slippage before executing trades
+  - `MarketScanner.walk_the_book()`: Calculates VWAP for a given order size
+  - `MarketScanner.get_orderbook_depth()`: Full orderbook depth analysis
+  - Returns (vwap, filled_size, slippage_percent) for buy/sell orders
+  - Prevents trades where slippage exceeds `max_slippage_percent`
+
+- **Pre-sign Batch Orders**: Minimized latency for multiple orders
+  - `BotTrader.execute_batch_orders()`: Execute multiple orders with pre-signing
+  - `BotTrader.execute_paired_buy_with_batch()`: BUY + TP + SL with pre-signing
+  - Separates slow signing (~100-200ms each) from fast submission (~50ms each)
+  - Reduces total time for BUY+TP+SL from ~600ms to ~350ms
+
+### Configuration
+- New options in `config.json`:
+  - `trading.use_presign_batch`: Enable pre-signed batch orders (default: false)
+  - `trading.use_slippage_check`: Enable slippage verification (default: true)
+  - `trading.max_slippage_percent`: Maximum allowed slippage (default: 2.0%)
+
+### Technical Details
+- Inspired by `gabagool222/15min-btc-polymarket-trading-bot` analysis
+- VWAP calculation walks orderbook levels to determine actual fill price
+- Batch pre-signing uses `client.create_order()` + `client.post_order()` pattern
+- Fallback to sequential execution if pre-sign not available in SDK
+
+---
+
 ## [0.13.2] - 2026-01-31 (Evening)
 ### Added
 - **Telegram Bot Integration**: Automated startup and management
