@@ -221,37 +221,79 @@ class PolymarketWebSocket:
         Args:
             message: Raw JSON message from WebSocket
         """
+        # Skip empty messages (pings, pongs, keepalives)
+        if not message or not message.strip():
+            return
+
         try:
             data = json.loads(message)
-            msg_type = data.get("type")
-
-            if msg_type == "book":
-                # Orderbook update
-                snapshot = self._parse_orderbook(data)
-                self.orderbooks[snapshot.token_id] = snapshot
-
-                # Trigger all registered callbacks
-                for callback in self.callbacks:
-                    try:
-                        await callback(snapshot)
-                    except Exception as exc:
-                        self.logger.error(f"Callback error: {exc}")
-
-            elif msg_type == "subscribed":
-                market = data.get("market")
-                self.logger.debug(f"Confirmed subscription to {market}")
-
-            elif msg_type == "error":
-                error = data.get("message", "Unknown error")
-                self.logger.error(f"WebSocket error message: {error}")
-
-            else:
-                self.logger.debug(f"Unknown message type: {msg_type}")
-
         except json.JSONDecodeError as exc:
-            self.logger.error(f"Failed to parse WebSocket message: {exc}")
+            self.logger.debug(f"Non-JSON message received: {message[:50] if message else '(empty)'}")
+            return
+
+        try:
+            # Handle list responses (Polymarket sometimes sends arrays)
+            if isinstance(data, list):
+                for item in data:
+                    if isinstance(item, dict):
+                        await self._process_message_dict(item)
+                return
+
+            # Handle single dict response
+            if isinstance(data, dict):
+                await self._process_message_dict(data)
+
         except Exception as exc:
             self.logger.error(f"Failed to handle message: {exc}")
+
+    async def _process_message_dict(self, data: dict):
+        """Process a single message dictionary."""
+        msg_type = data.get("type")
+
+        if msg_type == "book":
+            # Orderbook update
+            snapshot = self._parse_orderbook(data)
+            self.orderbooks[snapshot.token_id] = snapshot
+
+            # Trigger all registered callbacks
+            for callback in self.callbacks:
+                try:
+                    await callback(snapshot)
+                except Exception as exc:
+                    self.logger.error(f"Callback error: {exc}")
+
+        elif msg_type == "subscribed":
+            market = data.get("market")
+            self.logger.debug(f"Confirmed subscription to {market}")
+
+        elif msg_type == "error":
+            error = data.get("message", "Unknown error")
+            self.logger.error(f"WebSocket error message: {error}")
+
+        elif msg_type == "price_change":
+            # Price change notification - process as lightweight update
+            await self._handle_price_change(data)
+
+        elif msg_type in ("connected", "pong", "heartbeat"):
+            # Connection/keepalive messages - ignore silently
+            pass
+
+        else:
+            # Log unknown types at debug level to investigate
+            self.logger.debug(f"Unknown message type: {msg_type}, keys: {list(data.keys())}")
+
+    async def _handle_price_change(self, data: dict):
+        """Handle price_change messages as lightweight orderbook updates."""
+        token_id = data.get("asset_id") or data.get("market")
+        if not token_id:
+            return
+
+        # Update cached orderbook if we have one
+        if token_id in self.orderbooks:
+            snapshot = self.orderbooks[token_id]
+            # Price change messages might have price/side info
+            # For now, just mark as recently updated
+            snapshot.timestamp = time.time()
 
     def _parse_orderbook(self, data: dict) -> OrderbookSnapshot:
         """
