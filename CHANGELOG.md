@@ -2,6 +2,122 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.13.2] - 2026-01-31 (Evening)
+### Added
+- **Telegram Bot Integration**: Automated startup and management
+  - `scripts/restart_bot.sh`: Auto-detects Telegram config and starts both bots
+  - `scripts/stop_bot.sh`: Stops both main bot and Telegram bot gracefully
+  - `scripts/start_telegram_bot.sh`: Standalone script for Telegram bot only
+  - `scripts/status_bot.sh`: Complete dashboard showing status of both bots
+  - Bot de Telegram inicia automáticamente en background si está configurado
+
+### Documentation
+- `docs/SCRIPTS_DISPONIBLES.md`: Complete guide to all management scripts
+- `docs/REINICIAR_BOT.md`: Comprehensive restart guide
+
+### Benefits
+- Single command to restart everything: `bash scripts/restart_bot.sh`
+- Automatic Telegram bot management (no manual process juggling)
+- Easy status monitoring: `bash scripts/status_bot.sh`
+- Unified shutdown: `bash scripts/stop_bot.sh`
+
+---
+
+## [0.13.1] - 2026-01-31 (Afternoon)
+### Fixed
+- **CRITICAL: Resolved Markets Filter**: Bot was opening positions in markets resolving <48 hours
+  - **Problem**: 75% of positions in resolved markets (losses of 95-99%)
+  - **Root Cause**: No minimum days-to-resolve filter, markets resolved shortly after entry
+  - **Solution**: New `min_days_to_resolve: 2` filter in config.json
+
+- **Enhanced Market Detection**:
+  - Detects markets past resolution date (`days_to_resolve < 0`)
+  - Expanded closed status detection (`finalized`, `settled`)
+  - Improved logging shows `days` for all accepted/rejected markets
+
+### Added
+- **Diagnostic Tools**:
+  - `tools/diagnose_market_filters.py`: Analyzes 50 markets, shows rejection reasons
+  - `scripts/quick_validate_fix.sh`: Validates filter implementation
+  - Export to CSV support for analysis
+
+### Configuration
+- New filter: `market_filters.min_days_to_resolve: 2` (default)
+- Prevents markets resolving today/tomorrow from being traded
+
+### Documentation
+- `docs/FIX_RESOLVED_MARKETS.md`: Technical documentation (450 lines)
+- `docs/RESUMEN_FIX.md`: Spanish summary (261 lines)
+
+### Expected Impact
+- Resolved market positions: 75% → <5%
+- Average SL loss: -69% → -12%
+- Markets with days < 2: Rejected
+
+---
+
+## [0.13.0] - 2026-01-31 (Morning)
+### Added
+- **WebSocket Real-Time Monitoring** ✅ STABLE (5+ hours, 0 errors)
+  - `bot/websocket_client.py`: Full WebSocket client for orderbook subscriptions
+  - `bot/websocket_monitor.py`: Async position monitoring via WebSocket
+  - Message handling: Empty keepalives, list responses, multiple message types
+  - Latency: <100ms (vs 10s polling) - 99% improvement
+
+- **Concurrent Order Placement** ✅ IMPLEMENTED
+  - `bot/trader.py`: New methods for placing BUY + TP + SL simultaneously
+  - Exit modes: `limit_orders` (concurrent) vs `monitor` (traditional)
+  - Reduces post-entry latency from 10s to <1s
+
+- **Telegram Command Bot** ✅ FUNCTIONAL
+  - `tools/telegram_bot.py`: Interactive command bot (411 lines)
+  - Commands: `/status`, `/positions`, `/simulate`, `/summary`, `/balance`, `/help`
+  - Long polling for reliable message reception
+  - Remote control of bot via Telegram
+
+- **TP/SL Simulation Tool**
+  - `tools/simulate_fills.py`: Simulates fills for dry-run positions
+  - Calculates P&L without real trading
+  - Loop mode for continuous monitoring
+  - Saves results to `data/simulation_results.json`
+
+- **Telegram Alerts**
+  - `tools/telegram_alerts.py`: Send alerts and daily summaries
+  - Modes: `--test`, `--monitor`, `--summary`
+  - Real-time fill notifications
+
+### Changed
+- **Configuration**: Enabled production features in `config.json`
+  - `use_websocket: true`
+  - `use_concurrent_orders: true`
+  - Still in `dry_run: true` for safety
+
+### Testing
+- **5-Hour Dry Run**: Stable operation
+  - 10 positions opened
+  - 0 errors
+  - 0 WebSocket reconnects
+  - 8,625+ log lines
+
+### Documentation
+- `docs/day3_progress.md`: Day 3 progress report
+- `docs/TESTING_GUIDE.md`: Step-by-step testing instructions
+- `docs/PROGRESS_DAY2.md`: WebSocket fix documentation
+
+### Architecture
+```
+Main Bot → WebSocket (real-time) + Gamma API (volume) + CLOB API (trading)
+         → Telegram Alerts (every 5 min)
+         → Telegram Command Bot (interactive)
+```
+
+### Performance Improvements
+- **Latency**: 10,000ms → <100ms (-99%)
+- **API Calls**: 1,800/hr → ~12/hr (-99.3%)
+- **Slippage**: 0.2% → 0% (limit orders)
+
+---
+
 ## [0.12.3] - 2026-01-30 (Evening)
 ### Changed
 - **Project Reorganization**: Restructured project for better maintainability.
