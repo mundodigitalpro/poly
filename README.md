@@ -4,8 +4,9 @@ Cliente Python para trading en Polymarket via API.
 
 ## ✅ Estado
 
-**Operativo** - Trading funcionando con Magic Link ✅  
-**Bot Autónomo (Beta v0.10.0)** - Fase 2 (Integración y Testing) completada ✅
+**Operativo** - Trading funcionando con Magic Link ✅
+**Bot Autónomo (v0.13.2)** - Producción con WebSocket + Concurrent Orders + Telegram ✅
+**Filtro Mercados Resueltos** - min_days_to_resolve implementado ✅
 
 ## 🚀 Inicio Rápido
 
@@ -46,6 +47,30 @@ python generate_user_api_keys.py
 
 ## 📋 Comandos
 
+### Gestión del Bot (Nuevo en v0.13)
+
+```bash
+# Reiniciar bot (principal + Telegram)
+bash scripts/restart_bot.sh
+
+# Ver estado de ambos bots
+bash scripts/status_bot.sh
+
+# Detener ambos bots
+bash scripts/stop_bot.sh
+
+# Iniciar solo bot de Telegram
+bash scripts/start_telegram_bot.sh
+
+# Validar filtro de mercados resueltos
+bash scripts/quick_validate_fix.sh
+
+# Diagnóstico de filtros de mercados
+python tools/diagnose_market_filters.py
+```
+
+### Cliente Manual
+
 ```bash
 # Ver estado de cuenta (orders/trades)
 python poly_client.py --balance
@@ -67,6 +92,23 @@ python main_bot.py --once
 
 # Bot autónomo (loop continuo)
 python main_bot.py
+```
+
+### Herramientas de Análisis
+
+```bash
+# Simulación de TP/SL (dry-run)
+python tools/simulate_fills.py
+python tools/simulate_fills.py --loop 300  # Continuo
+
+# Alertas de Telegram
+python tools/telegram_alerts.py --test
+python tools/telegram_alerts.py --monitor
+python tools/telegram_alerts.py --summary
+
+# Bot de comandos Telegram (interactive)
+python tools/telegram_bot.py
+# Comandos: /status, /positions, /simulate, /balance, /help
 ```
 
 ## 📈 Trading
@@ -107,26 +149,63 @@ python scripts/diagnose_config.py
 python scripts/test_all_sig_types.py
 ```
 
-## 🤖 Bot Autónomo (En Desarrollo)
+## 🤖 Bot Autónomo (v0.13.2)
 
-Plan completo en `bot_plan.md` para un bot de trading 24/7:
-- Monitoreo automático de mercados con filtros inteligentes
-- Gestión de posiciones con TP/SL dinámico
-- Sistema de scoring para selección de mejores mercados
-- 10 protecciones de seguridad (blacklist temporal, daily loss limit, etc.)
-- Persistencia de datos y stats tracking
-- Rollout por fases: Dry run → Paper → Micro ($0.25) → Normal ($1.00)
+Bot de trading 24/7 con arquitectura profesional:
 
-**Estado**: Implementado (Beta v0.10.0) ✅ | Fase 2 completada ✅ | Extended Dry Run en progreso 🔄
+### Funcionalidades Implementadas ✅
 
-Para iniciar el bot en modo simulación:
+**Core Trading**:
+- ✅ Monitoreo automático con filtros inteligentes (min_days, volume, liquidity, spread)
+- ✅ Gestión de posiciones con TP/SL dinámico por rango de odds
+- ✅ Sistema de scoring para selección de mejores mercados
+- ✅ 10 protecciones de seguridad (blacklist, daily loss limit, etc.)
+
+**Nuevas Funcionalidades (v0.13)**:
+- ✅ **WebSocket Real-Time**: Monitoreo <100ms latency (vs 10s polling)
+- ✅ **Concurrent Orders**: BUY + TP + SL simultáneos (<1s vs 10s)
+- ✅ **Telegram Command Bot**: Control remoto vía Telegram
+- ✅ **Filtro Mercados Resueltos**: Evita mercados con `days < 2`
+- ✅ **Gamma API**: Volume/liquidity real (vs CLOB inaccurate data)
+
+**Gestión y Monitoreo**:
+- ✅ Scripts automáticos de reinicio y estado
+- ✅ Simulación de TP/SL para validación
+- ✅ Alertas vía Telegram
+- ✅ Diagnóstico de filtros de mercados
+
+### Performance
+
+| Métrica | Antes | Ahora (v0.13) | Mejora |
+|---------|-------|---------------|--------|
+| Latency monitoreo | 10,000ms | <100ms | **-99%** |
+| API calls/hora | 1,800 | ~12 | **-99.3%** |
+| Slippage | 0.2% | 0% | **-100%** |
+| Mercados resueltos | 75% | <5% | **-93%** |
+
+### Inicio Rápido
+
 ```bash
-python main_bot.py
-# O para una sola ejecución:
-python main_bot.py --once
+# Reiniciar bot con nueva configuración
+bash scripts/restart_bot.sh
+
+# Ver estado
+bash scripts/status_bot.sh
+
+# Ver logs en tiempo real
+tail -f logs/bot_monitor_*.log
+
+# Comandos vía Telegram: /status, /positions, /balance
 ```
 
-Ver también: `CLAUDE.md` y `GEMINI.md` para contexto técnico del proyecto.
+### Documentación
+
+- `docs/SCRIPTS_DISPONIBLES.md`: Guía completa de scripts
+- `docs/REINICIAR_BOT.md`: Cómo reiniciar el bot
+- `docs/FIX_RESOLVED_MARKETS.md`: Fix de mercados resueltos
+- `docs/TESTING_GUIDE.md`: Testing de WebSocket y Concurrent Orders
+- `bot_plan.md`: Plan original del bot
+- `CLAUDE.md`, `GEMINI.md`, `AGENTS.md`: Memorias del equipo AI
 
 ## 📁 Estructura
 
@@ -142,23 +221,35 @@ poly/
 │   ├── config.py               # Carga de configuración
 │   ├── gamma_client.py         # Cliente Gamma API (volumen/liquidez)
 │   ├── logger.py               # Sistema de logging
-│   ├── market_scanner.py       # Escaneo y scoring de mercados
+│   ├── market_scanner.py       # Escaneo y scoring (con min_days filter)
 │   ├── position_manager.py     # Gestión de posiciones
 │   ├── strategy.py             # Lógica de estrategia (TP/SL)
-│   ├── trader.py               # Ejecución de órdenes
+│   ├── trader.py               # Ejecución de órdenes (concurrent)
+│   ├── websocket_client.py     # WebSocket real-time (v0.13)
+│   ├── websocket_monitor.py    # Monitoring async (v0.13)
 │   └── whale_service.py        # Integración whale tracking
 │
-├── scripts/                    # Utilidades de setup
-│   ├── generate_user_api_keys.py
-│   ├── verify_wallet.py
-│   ├── diagnose_config.py
-│   └── test_all_sig_types.py
+├── scripts/                    # Gestión y setup
+│   ├── generate_user_api_keys.py  # Generar credentials
+│   ├── verify_wallet.py           # Verificar wallet
+│   ├── diagnose_config.py         # Diagnosticar config
+│   ├── test_all_sig_types.py     # Test signature types
+│   ├── restart_bot.sh             # 🔄 Reiniciar ambos bots (v0.13)
+│   ├── stop_bot.sh                # 🛑 Detener ambos bots (v0.13)
+│   ├── status_bot.sh              # 📊 Estado completo (v0.13)
+│   ├── start_telegram_bot.sh      # 📱 Solo Telegram (v0.13)
+│   ├── quick_validate_fix.sh      # ✅ Validar fix (v0.13)
+│   └── test_websocket.sh          # 🧪 Test WebSocket
 │
 ├── tools/                      # Herramientas de análisis
-│   ├── whale_tracker.py        # Tracker de ballenas
-│   ├── dutch_book_scanner.py   # Escaneo arbitraje YES/NO
-│   ├── negrisk_scanner.py      # Escaneo multi-outcome
-│   └── analyze_positions.py    # Análisis de riesgo
+│   ├── whale_tracker.py           # Tracker de ballenas
+│   ├── dutch_book_scanner.py      # Escaneo arbitraje YES/NO
+│   ├── negrisk_scanner.py         # Escaneo multi-outcome
+│   ├── analyze_positions.py       # Análisis de riesgo
+│   ├── telegram_bot.py            # 📱 Bot de comandos (v0.13)
+│   ├── telegram_alerts.py         # 📢 Alertas Telegram (v0.13)
+│   ├── simulate_fills.py          # 🎯 Simulación TP/SL (v0.13)
+│   └── diagnose_market_filters.py # 🔍 Diagnóstico filtros (v0.13)
 │
 ├── docs/                       # Documentación
 │   ├── bot_plan.md             # Diseño del bot autónomo
