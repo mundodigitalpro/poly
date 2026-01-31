@@ -554,5 +554,125 @@ def run_loop():
         time.sleep(position_check_interval)
 
 
+async def run_loop_async():
+    """Async version of run_loop using WebSocket for real-time monitoring."""
+    import asyncio
+    from bot.websocket_client import PolymarketWebSocket
+    from bot.websocket_monitor import monitor_positions_websocket, update_websocket_subscriptions
+
+    parser = argparse.ArgumentParser(description="Polymarket Autonomous Bot (WebSocket)")
+    parser.add_argument("--once", action="store_true", help="Run a single loop")
+    args = parser.parse_args()
+
+    config = load_bot_config()
+    logger = get_logger("PolyBot", config.log_level)
+
+    client = _init_client(logger)
+    position_manager = PositionManager()
+    strategy = TradingStrategy(config)
+    scanner = MarketScanner(client, config, logger, position_manager, strategy)
+    trader = BotTrader(client, config, logger)
+
+    scan_interval = config.get("bot.loop_interval_seconds", 120)
+    blacklist_cfg = config.get("blacklist", {})
+
+    # Initialize WebSocket
+    ws_config = {
+        "websocket_reconnect_delay": config.get("trading.websocket_reconnect_delay", 5),
+        "websocket_ping_interval": config.get("trading.websocket_ping_interval", 30),
+        "websocket_max_reconnects": config.get("trading.websocket_max_reconnects", 10),
+    }
+    ws = PolymarketWebSocket(logger, ws_config)
+
+    # Connect WebSocket
+    logger.info("Connecting WebSocket...")
+    if not await ws.connect():
+        logger.error("Failed to connect WebSocket, falling back to sync mode")
+        return run_loop()  # Fallback to polling
+
+    # Start WebSocket listener in background
+    websocket_task = asyncio.create_task(ws.run())
+
+    last_buy_ts = 0.0
+    last_scan_ts = 0.0
+
+    logger.section("BOT STARTED (WebSocket Mode)")
+
+    try:
+        while True:
+            logger.info("Loop start")
+            position_manager.clean_blacklist()
+
+            # Update WebSocket subscriptions to match current positions
+            await update_websocket_subscriptions(ws, position_manager, logger)
+
+            # Monitor positions via WebSocket callbacks (non-blocking)
+            await monitor_positions_websocket(
+                ws,
+                position_manager,
+                trader,
+                strategy,
+                blacklist_cfg,
+                logger,
+            )
+
+            now = time.time()
+            time_since_scan = now - last_scan_ts
+            can_trade, reason = _can_open_new_position(
+                logger, position_manager, config, last_buy_ts
+            )
+
+            should_scan = can_trade and time_since_scan >= scan_interval
+
+            if not can_trade:
+                logger.info(f"Skipping new trade: {reason}")
+            elif not should_scan:
+                logger.info(
+                    f"Waiting for scan interval ({int(scan_interval - time_since_scan)}s remaining)"
+                )
+            else:
+                fill = _place_new_trade(
+                    client,
+                    logger,
+                    scanner,
+                    trader,
+                    position_manager,
+                    strategy,
+                    config,
+                )
+                last_scan_ts = time.time()
+                if fill:
+                    last_buy_ts = time.time()
+
+            if args.once:
+                break
+
+            # In WebSocket mode, we can check more frequently since it's non-blocking
+            # WebSocket handles real-time updates, this loop just manages trading decisions
+            logger.info("WebSocket monitoring active, checking for new trades in 30s")
+            await asyncio.sleep(30)  # Faster loop since monitoring is real-time
+
+    except KeyboardInterrupt:
+        logger.info("Shutting down WebSocket bot...")
+    finally:
+        # Clean up WebSocket
+        await ws.close()
+        websocket_task.cancel()
+        try:
+            await websocket_task
+        except asyncio.CancelledError:
+            pass
+
+
 if __name__ == "__main__":
-    run_loop()
+    # Load config to check if WebSocket is enabled
+    config = load_bot_config()
+    use_websocket = config.get("trading.use_websocket", False)
+
+    if use_websocket:
+        # Run async version with WebSocket
+        import asyncio
+        asyncio.run(run_loop_async())
+    else:
+        # Run sync version with polling
+        run_loop()
