@@ -95,10 +95,34 @@ if pgrep -f "python.*main_bot.py" > /dev/null; then
 fi
 echo "✓ Ningún bot en ejecución"
 
-# 6. Reiniciar bot
+# 6. Verificar configuración de Telegram
+echo ""
+echo "🔍 Verificando configuración de Telegram..."
+TELEGRAM_ENABLED=false
+
+if [ -f ".env" ]; then
+    if grep -q "TELEGRAM_BOT_TOKEN" .env && grep -q "TELEGRAM_CHAT_ID" .env; then
+        # Verificar que no estén vacías
+        TOKEN=$(grep "TELEGRAM_BOT_TOKEN" .env | cut -d '=' -f2 | tr -d ' ')
+        CHAT_ID=$(grep "TELEGRAM_CHAT_ID" .env | cut -d '=' -f2 | tr -d ' ')
+
+        if [ ! -z "$TOKEN" ] && [ ! -z "$CHAT_ID" ]; then
+            TELEGRAM_ENABLED=true
+            echo "✓ Telegram configurado - bot de comandos se iniciará"
+        else
+            echo "ℹ️  Telegram no configurado - solo bot principal"
+        fi
+    else
+        echo "ℹ️  Telegram no configurado - solo bot principal"
+    fi
+else
+    echo "ℹ️  Archivo .env no encontrado - solo bot principal"
+fi
+
+# 7. Iniciar bots
 echo ""
 echo "================================================================================"
-echo "🚀 INICIANDO BOT CON NUEVA CONFIGURACIÓN"
+echo "🚀 INICIANDO BOTS CON NUEVA CONFIGURACIÓN"
 echo "================================================================================"
 echo ""
 echo "Filtros activos:"
@@ -106,12 +130,44 @@ echo "  • min_days_to_resolve: 2 días"
 echo "  • max_days_to_resolve: 30 días"
 echo "  • WebSocket: Habilitado"
 echo "  • Concurrent Orders: Habilitado"
+if [ "$TELEGRAM_ENABLED" = true ]; then
+    echo "  • Bot de Telegram: Habilitado"
+fi
 echo ""
-echo "El bot se está iniciando..."
+echo "================================================================================"
+echo ""
+
+# Iniciar bot de Telegram en background si está configurado
+if [ "$TELEGRAM_ENABLED" = true ]; then
+    echo "📱 Iniciando bot de Telegram en background..."
+    nohup python tools/telegram_bot.py > logs/telegram_bot.log 2>&1 &
+    TELEGRAM_PID=$!
+    sleep 2
+
+    if ps -p $TELEGRAM_PID > /dev/null 2>&1; then
+        echo "   ✓ Bot de Telegram iniciado (PID: $TELEGRAM_PID)"
+        echo "   Logs: tail -f logs/telegram_bot.log"
+    else
+        echo "   ⚠️  ERROR: Bot de Telegram no pudo iniciar"
+        echo "   Ver logs: cat logs/telegram_bot.log"
+    fi
+    echo ""
+fi
+
+# Iniciar bot principal
+echo "🤖 Iniciando bot principal..."
+echo ""
 echo "Presiona Ctrl+C para detener"
 echo ""
 echo "================================================================================"
 echo ""
 
-# Iniciar bot
+# Iniciar bot principal (foreground)
 python main_bot.py
+
+# Si el bot principal se detiene, detener también Telegram
+if [ "$TELEGRAM_ENABLED" = true ] && [ ! -z "$TELEGRAM_PID" ]; then
+    echo ""
+    echo "🛑 Deteniendo bot de Telegram..."
+    kill $TELEGRAM_PID 2>/dev/null || true
+fi
