@@ -140,77 +140,185 @@ def _update_positions(
     strategy: TradingStrategy,
     blacklist_cfg: dict,
 ):
-    """Check open positions for TP/SL conditions."""
+    """Check open positions for TP/SL conditions (supports both modes)."""
     positions = position_manager.get_all_positions()
     if not positions:
         return
 
     for position in positions:
-        try:
-            book = client.get_order_book(position.token_id)
-            best_bid, best_ask = _best_bid_ask(book)
-        except Exception as exc:
-            logger.warn(f"Orderbook error for {position.token_id[:8]}...: {exc}")
-            continue
-
-        if best_bid <= 0:
-            logger.warn(f"No bids for {position.token_id[:8]}..., skipping.")
-            continue
-
-        action = None
-        if best_bid >= position.tp:
-            action = "take_profit"
-        elif best_bid <= position.sl:
-            action = "stop_loss"
-
-        if not action:
-            logger.info(
-                f"Position {position.token_id[:8]}... price={best_bid:.4f} "
-                f"tp={position.tp:.4f} sl={position.sl:.4f}"
+        # Route to appropriate handler based on exit_mode
+        if position.exit_mode == "limit_orders":
+            _update_position_with_limit_orders(
+                position, logger, trader, position_manager, strategy, blacklist_cfg
             )
-            continue
+        else:
+            _update_position_legacy_monitoring(
+                position, client, logger, trader, position_manager, strategy, blacklist_cfg
+            )
 
+
+def _update_position_with_limit_orders(
+    position: Position,
+    logger,
+    trader: BotTrader,
+    position_manager: PositionManager,
+    strategy: TradingStrategy,
+    blacklist_cfg: dict,
+):
+    """Monitor limit order fills for TP/SL."""
+    # Check TP order status
+    tp_status = trader.check_order_status(position.tp_order_id)
+    sl_status = trader.check_order_status(position.sl_order_id)
+
+    # TP filled
+    if tp_status['status'] in ('filled', 'partial'):
         logger.info(
-            f"{action.upper()} for {position.token_id[:8]}... "
-            f"bid={best_bid:.4f}"
+            f"TAKE PROFIT filled for {position.token_id[:8]}... "
+            f"@ {tp_status['avg_price']:.4f}"
         )
 
-        try:
-            fill = trader.execute_sell(
-                token_id=position.token_id,
-                price=best_bid,
-                size=position.filled_size,
-                entry_price=position.entry_price,
-                is_emergency_exit=action == "stop_loss",
-            )
-        except Exception as exc:
-            logger.error(f"Sell failed for {position.token_id[:8]}...: {exc}")
-            continue
+        # Cancel SL order
+        trader.cancel_order(position.sl_order_id)
 
+        # Record trade
         exit_time = datetime.now(timezone.utc).isoformat()
         odds_range = strategy.get_odds_range(position.entry_price)
         position_manager.record_trade(
             entry_price=position.entry_price,
-            exit_price=fill.avg_price,
-            size=fill.filled_size,
-            fees=fill.fees_paid,
+            exit_price=tp_status['avg_price'],
+            size=tp_status['filled_size'],
+            fees=tp_status['fees'],
             entry_time=position.entry_time,
             exit_time=exit_time,
             odds_range=odds_range,
         )
 
-        if action == "stop_loss":
-            duration = blacklist_cfg.get("duration_days", 3)
-            max_attempts = blacklist_cfg.get("max_attempts", 2)
-            position_manager.add_to_blacklist(
-                position.token_id, "stop_loss", duration, max_attempts
-            )
+        position_manager.remove_position(position.token_id)
+        logger.info(
+            f"Position closed (TP) {position.token_id[:8]}... "
+            f"size={tp_status['filled_size']} @ {tp_status['avg_price']:.4f}"
+        )
+        return
+
+    # SL filled
+    if sl_status['status'] in ('filled', 'partial'):
+        logger.info(
+            f"STOP LOSS filled for {position.token_id[:8]}... "
+            f"@ {sl_status['avg_price']:.4f}"
+        )
+
+        # Cancel TP order
+        trader.cancel_order(position.tp_order_id)
+
+        # Record trade
+        exit_time = datetime.now(timezone.utc).isoformat()
+        odds_range = strategy.get_odds_range(position.entry_price)
+        position_manager.record_trade(
+            entry_price=position.entry_price,
+            exit_price=sl_status['avg_price'],
+            size=sl_status['filled_size'],
+            fees=sl_status['fees'],
+            entry_time=position.entry_time,
+            exit_time=exit_time,
+            odds_range=odds_range,
+        )
+
+        # Blacklist after SL
+        duration = blacklist_cfg.get("duration_days", 3)
+        max_attempts = blacklist_cfg.get("max_attempts", 2)
+        position_manager.add_to_blacklist(
+            position.token_id, "stop_loss", duration, max_attempts
+        )
 
         position_manager.remove_position(position.token_id)
         logger.info(
-            f"Position closed {position.token_id[:8]}... "
-            f"size={fill.filled_size} @ {fill.avg_price:.4f}"
+            f"Position closed (SL) {position.token_id[:8]}... "
+            f"size={sl_status['filled_size']} @ {sl_status['avg_price']:.4f}"
         )
+        return
+
+    # Both orders still open (normal case)
+    logger.debug(
+        f"Position {position.token_id[:8]}... "
+        f"TP={tp_status['status']} SL={sl_status['status']}"
+    )
+
+
+def _update_position_legacy_monitoring(
+    position: Position,
+    client,
+    logger,
+    trader: BotTrader,
+    position_manager: PositionManager,
+    strategy: TradingStrategy,
+    blacklist_cfg: dict,
+):
+    """Legacy monitoring mode: check orderbook prices and execute market sells."""
+    try:
+        book = client.get_order_book(position.token_id)
+        best_bid, best_ask = _best_bid_ask(book)
+    except Exception as exc:
+        logger.warn(f"Orderbook error for {position.token_id[:8]}...: {exc}")
+        return
+
+    if best_bid <= 0:
+        logger.warn(f"No bids for {position.token_id[:8]}..., skipping.")
+        return
+
+    action = None
+    if best_bid >= position.tp:
+        action = "take_profit"
+    elif best_bid <= position.sl:
+        action = "stop_loss"
+
+    if not action:
+        logger.info(
+            f"Position {position.token_id[:8]}... price={best_bid:.4f} "
+            f"tp={position.tp:.4f} sl={position.sl:.4f}"
+        )
+        return
+
+    logger.info(
+        f"{action.upper()} for {position.token_id[:8]}... "
+        f"bid={best_bid:.4f}"
+    )
+
+    try:
+        fill = trader.execute_sell(
+            token_id=position.token_id,
+            price=best_bid,
+            size=position.filled_size,
+            entry_price=position.entry_price,
+            is_emergency_exit=action == "stop_loss",
+        )
+    except Exception as exc:
+        logger.error(f"Sell failed for {position.token_id[:8]}...: {exc}")
+        return
+
+    exit_time = datetime.now(timezone.utc).isoformat()
+    odds_range = strategy.get_odds_range(position.entry_price)
+    position_manager.record_trade(
+        entry_price=position.entry_price,
+        exit_price=fill.avg_price,
+        size=fill.filled_size,
+        fees=fill.fees_paid,
+        entry_time=position.entry_time,
+        exit_time=exit_time,
+        odds_range=odds_range,
+    )
+
+    if action == "stop_loss":
+        duration = blacklist_cfg.get("duration_days", 3)
+        max_attempts = blacklist_cfg.get("max_attempts", 2)
+        position_manager.add_to_blacklist(
+            position.token_id, "stop_loss", duration, max_attempts
+        )
+
+    position_manager.remove_position(position.token_id)
+    logger.info(
+        f"Position closed {position.token_id[:8]}... "
+        f"size={fill.filled_size} @ {fill.avg_price:.4f}"
+    )
 
 
 def _can_open_new_position(
@@ -277,34 +385,87 @@ def _place_new_trade(
         f"New candidate score={candidate['score']} odds={candidate['odds']} "
         f"spread={candidate['spread_percent']}% volume={candidate['volume_usd']}"
     )
-    logger.info(
-        f"Placing BUY {size_shares} @ {price:.4f} "
-        f"TP={tp:.4f} SL={sl:.4f}"
-    )
 
-    fill = trader.execute_buy(
-        token_id=candidate["token_id"],
-        price=price,
-        size=size_shares,
-    )
+    # Check if concurrent orders are enabled
+    use_concurrent = config.get("trading.use_concurrent_orders", False)
 
-    entry_time = datetime.now(timezone.utc).isoformat()
-    position = Position(
-        token_id=candidate["token_id"],
-        entry_price=fill.avg_price,
-        size=size_shares,
-        filled_size=fill.filled_size,
-        entry_time=entry_time,
-        tp=tp,
-        sl=sl,
-        fees_paid=fill.fees_paid,
-        order_id=fill.order_id,
-    )
-    position_manager.add_position(position)
-    logger.info(
-        f"Position opened {candidate['token_id'][:8]}... "
-        f"size={fill.filled_size} @ {fill.avg_price:.4f}"
-    )
+    if use_concurrent:
+        logger.info(
+            f"Placing BUY {size_shares} @ {price:.4f} with concurrent TP/SL "
+            f"(TP={tp:.4f} SL={sl:.4f})"
+        )
+
+        # Execute buy with concurrent limit orders for TP/SL
+        result = trader.execute_buy_with_exits(
+            token_id=candidate["token_id"],
+            entry_price=price,
+            size=size_shares,
+            tp_price=tp,
+            sl_price=sl,
+        )
+
+        fill = result['buy_fill']
+        entry_time = datetime.now(timezone.utc).isoformat()
+        position = Position(
+            token_id=candidate["token_id"],
+            entry_price=fill.avg_price,
+            size=size_shares,
+            filled_size=fill.filled_size,
+            entry_time=entry_time,
+            tp=tp,
+            sl=sl,
+            fees_paid=fill.fees_paid,
+            order_id=fill.order_id,
+            # Concurrent order fields
+            tp_order_id=result['tp_order_id'],
+            sl_order_id=result['sl_order_id'],
+            exit_mode="limit_orders" if result['tp_order_id'] else "monitor",
+        )
+
+        position_manager.add_position(position)
+
+        if result['tp_order_id']:
+            logger.info(
+                f"Position opened with limit orders: "
+                f"size={fill.filled_size} @ {fill.avg_price:.4f} "
+                f"TP={result['tp_order_id'][:8]}... SL={result['sl_order_id'][:8]}..."
+            )
+        else:
+            logger.warn(
+                f"Limit orders failed, using legacy monitoring for {candidate['token_id'][:8]}..."
+            )
+    else:
+        logger.info(
+            f"Placing BUY {size_shares} @ {price:.4f} "
+            f"TP={tp:.4f} SL={sl:.4f}"
+        )
+
+        # Legacy mode: market buy + monitoring
+        fill = trader.execute_buy(
+            token_id=candidate["token_id"],
+            price=price,
+            size=size_shares,
+        )
+
+        entry_time = datetime.now(timezone.utc).isoformat()
+        position = Position(
+            token_id=candidate["token_id"],
+            entry_price=fill.avg_price,
+            size=size_shares,
+            filled_size=fill.filled_size,
+            entry_time=entry_time,
+            tp=tp,
+            sl=sl,
+            fees_paid=fill.fees_paid,
+            order_id=fill.order_id,
+            exit_mode="monitor",
+        )
+        position_manager.add_position(position)
+        logger.info(
+            f"Position opened {candidate['token_id'][:8]}... "
+            f"size={fill.filled_size} @ {fill.avg_price:.4f}"
+        )
+
     return fill
 
 
@@ -327,6 +488,7 @@ def _calculate_available_capital(config, position_manager, client, logger) -> fl
 def run_loop():
     parser = argparse.ArgumentParser(description="Polymarket Autonomous Bot")
     parser.add_argument("--once", action="store_true", help="Run a single loop")
+    parser.add_argument("--verbose-filters", action="store_true", help="Log detailed rejection reasons")
     args = parser.parse_args()
 
     config = load_bot_config()
@@ -336,6 +498,8 @@ def run_loop():
     position_manager = PositionManager()
     strategy = TradingStrategy(config)
     scanner = MarketScanner(client, config, logger, position_manager, strategy)
+    if args.verbose_filters:
+        scanner.verbose_filters = True
     trader = BotTrader(client, config, logger)
 
     scan_interval = config.get("bot.loop_interval_seconds", 120)
@@ -393,5 +557,128 @@ def run_loop():
         time.sleep(position_check_interval)
 
 
+async def run_loop_async():
+    """Async version of run_loop using WebSocket for real-time monitoring."""
+    import asyncio
+    from bot.websocket_client import PolymarketWebSocket
+    from bot.websocket_monitor import monitor_positions_websocket, update_websocket_subscriptions
+
+    parser = argparse.ArgumentParser(description="Polymarket Autonomous Bot (WebSocket)")
+    parser.add_argument("--once", action="store_true", help="Run a single loop")
+    parser.add_argument("--verbose-filters", action="store_true", help="Log detailed rejection reasons")
+    args = parser.parse_args()
+
+    config = load_bot_config()
+    logger = get_logger("PolyBot", config.log_level)
+
+    client = _init_client(logger)
+    position_manager = PositionManager()
+    strategy = TradingStrategy(config)
+    scanner = MarketScanner(client, config, logger, position_manager, strategy)
+    if args.verbose_filters:
+        scanner.verbose_filters = True
+    trader = BotTrader(client, config, logger)
+
+    scan_interval = config.get("bot.loop_interval_seconds", 120)
+    blacklist_cfg = config.get("blacklist", {})
+
+    # Initialize WebSocket
+    ws_config = {
+        "websocket_reconnect_delay": config.get("trading.websocket_reconnect_delay", 5),
+        "websocket_ping_interval": config.get("trading.websocket_ping_interval", 30),
+        "websocket_max_reconnects": config.get("trading.websocket_max_reconnects", 10),
+    }
+    ws = PolymarketWebSocket(logger, ws_config)
+
+    # Connect WebSocket
+    logger.info("Connecting WebSocket...")
+    if not await ws.connect():
+        logger.error("Failed to connect WebSocket, falling back to sync mode")
+        return run_loop()  # Fallback to polling
+
+    # Start WebSocket listener in background
+    websocket_task = asyncio.create_task(ws.run())
+
+    last_buy_ts = 0.0
+    last_scan_ts = 0.0
+
+    logger.section("BOT STARTED (WebSocket Mode)")
+
+    try:
+        while True:
+            logger.info("Loop start")
+            position_manager.clean_blacklist()
+
+            # Update WebSocket subscriptions to match current positions
+            await update_websocket_subscriptions(ws, position_manager, logger)
+
+            # Monitor positions via WebSocket callbacks (non-blocking)
+            await monitor_positions_websocket(
+                ws,
+                position_manager,
+                trader,
+                strategy,
+                blacklist_cfg,
+                logger,
+            )
+
+            now = time.time()
+            time_since_scan = now - last_scan_ts
+            can_trade, reason = _can_open_new_position(
+                logger, position_manager, config, last_buy_ts
+            )
+
+            should_scan = can_trade and time_since_scan >= scan_interval
+
+            if not can_trade:
+                logger.info(f"Skipping new trade: {reason}")
+            elif not should_scan:
+                logger.info(
+                    f"Waiting for scan interval ({int(scan_interval - time_since_scan)}s remaining)"
+                )
+            else:
+                fill = _place_new_trade(
+                    client,
+                    logger,
+                    scanner,
+                    trader,
+                    position_manager,
+                    strategy,
+                    config,
+                )
+                last_scan_ts = time.time()
+                if fill:
+                    last_buy_ts = time.time()
+
+            if args.once:
+                break
+
+            # In WebSocket mode, we can check more frequently since it's non-blocking
+            # WebSocket handles real-time updates, this loop just manages trading decisions
+            logger.info("WebSocket monitoring active, checking for new trades in 30s")
+            await asyncio.sleep(30)  # Faster loop since monitoring is real-time
+
+    except KeyboardInterrupt:
+        logger.info("Shutting down WebSocket bot...")
+    finally:
+        # Clean up WebSocket
+        await ws.close()
+        websocket_task.cancel()
+        try:
+            await websocket_task
+        except asyncio.CancelledError:
+            pass
+
+
 if __name__ == "__main__":
-    run_loop()
+    # Load config to check if WebSocket is enabled
+    config = load_bot_config()
+    use_websocket = config.get("trading.use_websocket", False)
+
+    if use_websocket:
+        # Run async version with WebSocket
+        import asyncio
+        asyncio.run(run_loop_async())
+    else:
+        # Run sync version with polling
+        run_loop()

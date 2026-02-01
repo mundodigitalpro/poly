@@ -2,33 +2,151 @@
 
 All notable changes to this project will be documented in this file.
 
-## [0.12.4] - 2026-01-30 (Night)
+## [0.14.1] - 2026-02-01 (Morning)
 ### Fixed
-- **Critical: Datetime Timezone Bug in Position Manager**: Fixed `TypeError: can't subtract offset-naive and offset-aware datetimes`.
-  - Root cause: `entry_time` was stored without timezone but `exit_time` was generated with timezone.
-  - Solution: Normalize both datetimes by stripping timezone info before subtraction in `record_trade()`.
-  - File: `bot/position_manager.py` lines 301-309.
-  - Bug was discovered during Stop Loss trigger in extended dry-run.
+- **Tooling**: Updated `tools/diagnose_market_filters.py` to match new `PositionManager` and `TradingStrategy` signatures.
+
+## [0.14.0] - 2026-01-31 (Night)
+### Added
+- **Walk the Book (VWAP)**: Calculate real slippage before executing trades
+  - `MarketScanner.walk_the_book()`: Calculates VWAP for a given order size
+  - `MarketScanner.get_orderbook_depth()`: Full orderbook depth analysis
+  - Returns (vwap, filled_size, slippage_percent) for buy/sell orders
+  - Prevents trades where slippage exceeds `max_slippage_percent`
+
+- **Pre-sign Batch Orders**: Minimized latency for multiple orders
+  - `BotTrader.execute_batch_orders()`: Execute multiple orders with pre-signing
+  - `BotTrader.execute_paired_buy_with_batch()`: BUY + TP + SL with pre-signing
+  - Separates slow signing (~100-200ms each) from fast submission (~50ms each)
+  - Reduces total time for BUY+TP+SL from ~600ms to ~350ms
+
+### Configuration
+- New options in `config.json`:
+  - `trading.use_presign_batch`: Enable pre-signed batch orders (default: false)
+  - `trading.use_slippage_check`: Enable slippage verification (default: true)
+  - `trading.max_slippage_percent`: Maximum allowed slippage (default: 2.0%)
+
+### Technical Details
+- Inspired by `gabagool222/15min-btc-polymarket-trading-bot` analysis
+- VWAP calculation walks orderbook levels to determine actual fill price
+- Batch pre-signing uses `client.create_order()` + `client.post_order()` pattern
+- Fallback to sequential execution if pre-sign not available in SDK
+
+---
+
+## [0.13.2] - 2026-01-31 (Evening)
+### Added
+- **Telegram Bot Integration**: Automated startup and management
+  - `scripts/restart_bot.sh`: Auto-detects Telegram config and starts both bots
+  - `scripts/stop_bot.sh`: Stops both main bot and Telegram bot gracefully
+  - `scripts/start_telegram_bot.sh`: Standalone script for Telegram bot only
+  - `scripts/status_bot.sh`: Complete dashboard showing status of both bots
+  - Bot de Telegram inicia automáticamente en background si está configurado
+
+### Documentation
+- `docs/SCRIPTS_DISPONIBLES.md`: Complete guide to all management scripts
+- `docs/REINICIAR_BOT.md`: Comprehensive restart guide
+
+### Benefits
+- Single command to restart everything: `bash scripts/restart_bot.sh`
+- Automatic Telegram bot management (no manual process juggling)
+- Easy status monitoring: `bash scripts/status_bot.sh`
+- Unified shutdown: `bash scripts/stop_bot.sh`
+
+---
+
+## [0.13.1] - 2026-01-31 (Afternoon)
+### Fixed
+- **CRITICAL: Resolved Markets Filter**: Bot was opening positions in markets resolving <48 hours
+  - **Problem**: 75% of positions in resolved markets (losses of 95-99%)
+  - **Root Cause**: No minimum days-to-resolve filter, markets resolved shortly after entry
+  - **Solution**: New `min_days_to_resolve: 2` filter in config.json
+
+- **Enhanced Market Detection**:
+  - Detects markets past resolution date (`days_to_resolve < 0`)
+  - Expanded closed status detection (`finalized`, `settled`)
+  - Improved logging shows `days` for all accepted/rejected markets
+
+### Added
+- **Diagnostic Tools**:
+  - `tools/diagnose_market_filters.py`: Analyzes 50 markets, shows rejection reasons
+  - `scripts/quick_validate_fix.sh`: Validates filter implementation
+  - Export to CSV support for analysis
+
+### Configuration
+- New filter: `market_filters.min_days_to_resolve: 2` (default)
+- Prevents markets resolving today/tomorrow from being traded
+
+### Documentation
+- `docs/FIX_RESOLVED_MARKETS.md`: Technical documentation (450 lines)
+- `docs/RESUMEN_FIX.md`: Spanish summary (261 lines)
+
+### Expected Impact
+- Resolved market positions: 75% → <5%
+- Average SL loss: -69% → -12%
+- Markets with days < 2: Rejected
+
+---
+
+## [0.13.0] - 2026-01-31 (Morning)
+### Added
+- **WebSocket Real-Time Monitoring** ✅ STABLE (5+ hours, 0 errors)
+  - `bot/websocket_client.py`: Full WebSocket client for orderbook subscriptions
+  - `bot/websocket_monitor.py`: Async position monitoring via WebSocket
+  - Message handling: Empty keepalives, list responses, multiple message types
+  - Latency: <100ms (vs 10s polling) - 99% improvement
+
+- **Concurrent Order Placement** ✅ IMPLEMENTED
+  - `bot/trader.py`: New methods for placing BUY + TP + SL simultaneously
+  - Exit modes: `limit_orders` (concurrent) vs `monitor` (traditional)
+  - Reduces post-entry latency from 10s to <1s
+
+- **Telegram Command Bot** ✅ FUNCTIONAL
+  - `tools/telegram_bot.py`: Interactive command bot (411 lines)
+  - Commands: `/status`, `/positions`, `/simulate`, `/summary`, `/balance`, `/help`
+  - Long polling for reliable message reception
+  - Remote control of bot via Telegram
+
+- **TP/SL Simulation Tool**
+  - `tools/simulate_fills.py`: Simulates fills for dry-run positions
+  - Calculates P&L without real trading
+  - Loop mode for continuous monitoring
+  - Saves results to `data/simulation_results.json`
+
+- **Telegram Alerts**
+  - `tools/telegram_alerts.py`: Send alerts and daily summaries
+  - Modes: `--test`, `--monitor`, `--summary`
+  - Real-time fill notifications
 
 ### Changed
-- **Extended Dry Run Parameters**: Expanded test configuration.
-  - `max_positions`: 10 → 20 (more concurrent positions for testing)
-  - `max_markets`: 150 → 200 (wider market scan)
-  - `whale_tracking.enabled`: false → true (sentiment integration active)
+- **Configuration**: Enabled production features in `config.json`
+  - `use_websocket: true`
+  - `use_concurrent_orders: true`
+  - Still in `dry_run: true` for safety
 
-### Optimized (based on 21-trade analysis)
-- **Odds Range Narrowed**: Focus on profitable zone only.
-  - `min_odds`: 0.30 → **0.45**
-  - `max_odds`: 0.70 → **0.60**
-  - Analysis showed 0.50-0.60 was only profitable range (+$0.005 avg PnL)
-  - Extremes (0.30-0.40, 0.60-0.70) were losing money
-- **Stop Loss Margins Increased**: Give positions more room to recover.
-  - 0.30-0.40: 15% → 18%
-  - 0.40-0.50: 12% → 15%
-  - 0.50-0.60: 10% → 12%
-  - 0.60-0.70: 8% → 10%
-- **Whale Threshold Lowered**: Detect more trader activity.
-  - `whale_tracking.min_size`: $500 → **$100**
+### Testing
+- **5-Hour Dry Run**: Stable operation
+  - 10 positions opened
+  - 0 errors
+  - 0 WebSocket reconnects
+  - 8,625+ log lines
+
+### Documentation
+- `docs/day3_progress.md`: Day 3 progress report
+- `docs/TESTING_GUIDE.md`: Step-by-step testing instructions
+- `docs/PROGRESS_DAY2.md`: WebSocket fix documentation
+
+### Architecture
+```
+Main Bot → WebSocket (real-time) + Gamma API (volume) + CLOB API (trading)
+         → Telegram Alerts (every 5 min)
+         → Telegram Command Bot (interactive)
+```
+
+### Performance Improvements
+- **Latency**: 10,000ms → <100ms (-99%)
+- **API Calls**: 1,800/hr → ~12/hr (-99.3%)
+- **Slippage**: 0.2% → 0% (limit orders)
 
 ---
 

@@ -26,13 +26,16 @@ class MarketScanner:
             config: BotConfig instance
             logger: BotLogger instance
             position_manager: PositionManager instance
+            position_manager: PositionManager instance
             strategy: TradingStrategy instance
+            verbose_filters: Whether to log all rejections at INFO level
         """
         self.client = client
         self.config = config
         self.logger = logger
         self.position_manager = position_manager
         self.strategy = strategy
+        self.verbose_filters = False
 
         self.filters = config.get("market_filters", {})
         self.market_source = self.filters.get("source", "sampling")
@@ -233,10 +236,14 @@ class MarketScanner:
         spread_percent = self._spread_percent(best_bid, best_ask)
 
         if not self._passes_price_filters(odds, spread_percent, token_id, days_to_resolve):
-            self.logger.debug(
+            msg = (
                 f"Rejected {token_id[:8]}: odds={odds:.2f} spread={spread_percent:.1f}% "
                 f"days={days_to_resolve}"
             )
+            if self.verbose_filters:
+                self.logger.info(msg)
+            else:
+                self.logger.debug(msg)
             return None, "price_filtered"
 
         score = self.strategy.calculate_market_score(
@@ -255,6 +262,14 @@ class MarketScanner:
                     f"Whale sentiment for {token_id[:8]}: {sentiment:+.2f} "
                     f"(score adjusted: {score:.2f})"
                 )
+
+        # Log accepted candidate with key metrics
+        self.logger.info(
+            f"✓ Candidate: {question[:60]}... | "
+            f"token={token_id[:8]}... | odds={odds:.2f} | "
+            f"spread={spread_percent:.1f}% | days={days_to_resolve} | "
+            f"score={score:.1f}"
+        )
 
         return {
             "token_id": token_id,
@@ -283,31 +298,46 @@ class MarketScanner:
         min_volume = self.filters.get("min_volume_usd", 100.0)
         min_volume_24h = self.filters.get("min_volume_24h", 0)
         min_liquidity = self.filters.get("min_liquidity", 0)
+        min_days = self.filters.get("min_days_to_resolve", 2)
         max_days = self.filters.get("max_days_to_resolve", 30)
         _ = (min_odds, max_odds, max_spread)
 
         # Volume check (use min_volume_24h if set, else min_volume_usd)
         effective_min_vol = min_volume_24h if min_volume_24h > 0 else min_volume
         if volume_usd > 0 and volume_usd < effective_min_vol:
-            self.logger.debug(
-                f"Rejected {token_id[:8]}: volume={volume_usd:.2f} < {effective_min_vol}"
-            )
+            msg = f"Rejected {token_id[:8]}: volume={volume_usd:.2f} < {effective_min_vol}"
+            if self.verbose_filters:
+                self.logger.info(msg)
+            else:
+                self.logger.debug(msg)
             return False
 
         # Liquidity check (only if Gamma data available and filter set)
         if min_liquidity > 0 and liquidity > 0 and liquidity < min_liquidity:
-            self.logger.debug(
-                f"Rejected {token_id[:8]}: liquidity={liquidity:.2f} < {min_liquidity}"
-            )
+            msg = f"Rejected {token_id[:8]}: liquidity={liquidity:.2f} < {min_liquidity}"
+            if self.verbose_filters:
+                self.logger.info(msg)
+            else:
+                self.logger.debug(msg)
             return False
 
+        # Resolution date checks
         if days_to_resolve == 9999 and self.allow_missing_resolution:
             return True
 
-        if days_to_resolve > max_days:
-            self.logger.debug(
-                f"Rejected {token_id[:8]}: days={days_to_resolve} > {max_days}"
+        # CRITICAL: Reject markets resolving too soon (avoid resolved markets)
+        if days_to_resolve < min_days:
+            self.logger.info(
+                f"Rejected {token_id[:8]}: resolves too soon (days={days_to_resolve} < {min_days})"
             )
+            return False
+
+        if days_to_resolve > max_days:
+            msg = f"Rejected {token_id[:8]}: days={days_to_resolve} > {max_days}"
+            if self.verbose_filters:
+                self.logger.info(msg)
+            else:
+                self.logger.debug(msg)
             return False
 
         return True
@@ -321,14 +351,18 @@ class MarketScanner:
         max_spread = self.filters.get("max_spread_percent", 5.0)
 
         if not (min_odds <= odds <= max_odds):
-            self.logger.debug(
-                f"Rejected {token_id[:8]}: odds={odds:.2f} outside [{min_odds}, {max_odds}]"
-            )
+            msg = f"Rejected {token_id[:8]}: odds={odds:.2f} outside [{min_odds}, {max_odds}]"
+            if self.verbose_filters:
+                self.logger.info(msg)
+            else:
+                self.logger.debug(msg)
             return False
         if spread_percent > max_spread:
-            self.logger.debug(
-                f"Rejected {token_id[:8]}: spread={spread_percent:.1f}% > {max_spread}"
-            )
+            msg = f"Rejected {token_id[:8]}: spread={spread_percent:.1f}% > {max_spread}"
+            if self.verbose_filters:
+                self.logger.info(msg)
+            else:
+                self.logger.debug(msg)
             return False
         return True
 
@@ -411,6 +445,186 @@ class MarketScanner:
             return 0.0
         mid = (bid + ask) / 2
         return ((ask - bid) / mid) * 100
+
+    # ========================================================================
+    # WALK THE BOOK (VWAP) - Slippage calculation
+    # ========================================================================
+
+    def walk_the_book(
+        self, token_id: str, size: float, side: str = "buy"
+    ) -> Tuple[float, float, float]:
+        """
+        Calculate VWAP (Volume Weighted Average Price) for a given order size.
+
+        "Walks" through the orderbook to determine the actual average price
+        you'd pay/receive when filling an order of the specified size.
+
+        Args:
+            token_id: Token to analyze
+            size: Order size in shares
+            side: "buy" (walk asks) or "sell" (walk bids)
+
+        Returns:
+            Tuple of (vwap, filled_size, slippage_percent)
+            - vwap: Volume weighted average price
+            - filled_size: How much of the order could be filled
+            - slippage_percent: Slippage vs best price (0 = no slippage)
+        """
+        try:
+            order_book = self._call_api(self.client.get_order_book, token_id)
+        except Exception as exc:
+            self.logger.warn(f"Failed to get orderbook for VWAP: {exc}")
+            return 0.0, 0.0, 0.0
+
+        bids = getattr(order_book, "bids", None)
+        asks = getattr(order_book, "asks", None)
+
+        if bids is None or asks is None:
+            if hasattr(order_book, "to_dict"):
+                book_dict = order_book.to_dict()
+                bids = book_dict.get("bids", [])
+                asks = book_dict.get("asks", [])
+            else:
+                bids = []
+                asks = []
+
+        if side == "buy":
+            # Walking asks (lowest to highest)
+            orders = self._parse_orders(asks, ascending=True)
+            best_price = min(o[0] for o in orders) if orders else 0.0
+        else:
+            # Walking bids (highest to lowest)
+            orders = self._parse_orders(bids, ascending=False)
+            best_price = max(o[0] for o in orders) if orders else 0.0
+
+        if not orders or best_price <= 0:
+            return 0.0, 0.0, 0.0
+
+        vwap, filled = self._calculate_vwap(orders, size)
+
+        if vwap <= 0 or best_price <= 0:
+            slippage = 0.0
+        elif side == "buy":
+            # For buys, slippage is how much more we pay vs best ask
+            slippage = ((vwap - best_price) / best_price) * 100
+        else:
+            # For sells, slippage is how much less we receive vs best bid
+            slippage = ((best_price - vwap) / best_price) * 100
+
+        return vwap, filled, max(0.0, slippage)
+
+    def _parse_orders(self, orders: Any, ascending: bool = True) -> List[Tuple[float, float]]:
+        """
+        Parse orderbook orders into (price, size) tuples.
+
+        Args:
+            orders: Raw orders from API
+            ascending: Sort by price ascending (for asks) or descending (for bids)
+
+        Returns:
+            List of (price, size) tuples sorted appropriately
+        """
+        parsed = []
+        for order in orders:
+            price = self._get_order_price(order)
+            size = self._get_order_size(order)
+            if price > 0 and size > 0:
+                parsed.append((price, size))
+
+        # Sort: asks ascending (best = lowest), bids descending (best = highest)
+        parsed.sort(key=lambda x: x[0], reverse=not ascending)
+        return parsed
+
+    def _get_order_size(self, order: Any) -> float:
+        """Extract size from an order object or dict."""
+        if hasattr(order, "size"):
+            try:
+                return float(order.size)
+            except (TypeError, ValueError):
+                return 0.0
+        if isinstance(order, dict) and "size" in order:
+            try:
+                return float(order["size"])
+            except (TypeError, ValueError):
+                return 0.0
+        return 0.0
+
+    def _calculate_vwap(
+        self, orders: List[Tuple[float, float]], target_size: float
+    ) -> Tuple[float, float]:
+        """
+        Calculate Volume Weighted Average Price by walking through orders.
+
+        Args:
+            orders: List of (price, size) tuples, sorted by price
+            target_size: Target order size to fill
+
+        Returns:
+            Tuple of (vwap, filled_size)
+        """
+        if not orders or target_size <= 0:
+            return 0.0, 0.0
+
+        filled = 0.0
+        total_cost = 0.0
+
+        for price, available_size in orders:
+            take = min(available_size, target_size - filled)
+            total_cost += take * price
+            filled += take
+
+            if filled >= target_size:
+                break
+
+        if filled <= 0:
+            return 0.0, 0.0
+
+        vwap = total_cost / filled
+        return round(vwap, 6), round(filled, 6)
+
+    def get_orderbook_depth(self, token_id: str) -> Dict[str, Any]:
+        """
+        Get full orderbook depth analysis for a token.
+
+        Returns:
+            Dict with bid/ask depth, total liquidity, and price levels
+        """
+        try:
+            order_book = self._call_api(self.client.get_order_book, token_id)
+        except Exception as exc:
+            self.logger.warn(f"Failed to get orderbook depth: {exc}")
+            return {"error": str(exc)}
+
+        bids = getattr(order_book, "bids", []) or []
+        asks = getattr(order_book, "asks", []) or []
+
+        if hasattr(order_book, "to_dict"):
+            book_dict = order_book.to_dict()
+            bids = book_dict.get("bids", [])
+            asks = book_dict.get("asks", [])
+
+        bid_orders = self._parse_orders(bids, ascending=False)
+        ask_orders = self._parse_orders(asks, ascending=True)
+
+        total_bid_size = sum(size for _, size in bid_orders)
+        total_ask_size = sum(size for _, size in ask_orders)
+        total_bid_value = sum(price * size for price, size in bid_orders)
+        total_ask_value = sum(price * size for price, size in ask_orders)
+
+        return {
+            "token_id": token_id,
+            "bid_levels": len(bid_orders),
+            "ask_levels": len(ask_orders),
+            "total_bid_size": round(total_bid_size, 2),
+            "total_ask_size": round(total_ask_size, 2),
+            "total_bid_value_usd": round(total_bid_value, 2),
+            "total_ask_value_usd": round(total_ask_value, 2),
+            "best_bid": bid_orders[0][0] if bid_orders else 0.0,
+            "best_ask": ask_orders[0][0] if ask_orders else 0.0,
+            "imbalance": round(
+                (total_bid_size - total_ask_size) / max(total_bid_size + total_ask_size, 1), 2
+            ),
+        }
 
     def _extract_token_candidates(self, market: Dict[str, Any]) -> List[str]:
         """Extract candidate token IDs from market data."""
@@ -668,10 +882,15 @@ class MarketScanner:
     def _is_closed(self, market: Dict[str, Any]) -> Tuple[bool, str]:
         """Detect closed/resolved markets."""
         status = str(market.get("status", "")).lower()
-        if status in ("closed", "resolved", "settled"):
+        if status in ("closed", "resolved", "settled", "finalized"):
             return True, "closed_status"
 
+        # Check explicit closed flag
         closed = market.get("closed")
+        if closed is True:
+            return True, "closed_flag"
+
+        # Check active flag
         active = market.get("active")
         active_normalized = active
         if isinstance(active, str):
@@ -681,11 +900,22 @@ class MarketScanner:
             elif active_normalized in ("false", "0", "no"):
                 active_normalized = False
 
+        # Market is closed if both closed=True and active=False
         if closed is True and active_normalized is False:
             return True, "closed_flag"
 
+        # Treat inactive markets as closed (configurable)
         if self.treat_inactive_as_closed and active_normalized is False:
             return True, "inactive_flag"
+
+        # CRITICAL: Check if market is past its resolution date
+        # This catches markets that resolved but aren't marked as closed yet
+        days_to_resolve = self._days_to_resolve(market)
+        if days_to_resolve < 0:  # Negative = past resolution date
+            self.logger.info(
+                f"Rejected market: past resolution date (days={days_to_resolve})"
+            )
+            return True, "closed_status"
 
         return False, "ok"
 

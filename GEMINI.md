@@ -36,17 +36,16 @@ poly/
 - **EOA (MetaMask)**: Uses `signature_type=0`. Requires only `POLY_PRIVATE_KEY`.
 - **Credentials**: Managed via `.env` (never commit!). Generate with `python scripts/generate_user_api_keys.py`.
 
-## Current State (as of 2026-01-30 18:51)
-- **Version**: 0.12.4 (Beta)
-- **Latest Change**: Fixed datetime timezone bug in position_manager.py
-- **Bot Status**: RUNNING (dry-run)
-- **Tests**: 20/20 passing
-- **Whale Tracking**: ✅ ENABLED (min_size: $500, weight: 0.2)
-- **Config**: max_positions=20, max_markets=200
+## Current State (as of 2026-02-01)
+- **Version**: 0.14.1-dev
+- **Latest Change**: Fix `diagnose_market_filters.py`, added VWAP & Batch Orders
+- **Bot Status**: STOPPED (Ready for testing new features)
+- **Tests**: 35+ passing (including new VWAP tests)
+- **Active Proposals**: `docs/ESTRATEGIAS_VIABLES_2026.md`
 
 ### Phase History
-- **Phase 0-2.8**: COMPLETED (Core, Integration, Gamma API, Arbitrage Research, Whale Integration)
-- **Current**: Phase 3 (Extended Dry Run with whale sentiment)
+- **Phase 0-2.8**: COMPLETED (Core, Integration, Gamma API, Whale Tracking)
+- **Phase 3**: IN PROGRESS (Extended Dry Run with VWAP & Batch Orders)
 
 ## Useful Commands
 ```bash
