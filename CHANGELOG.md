@@ -3,6 +3,10 @@
 All notable changes to this project will be documented in this file.
 
 ## [0.14.1] - 2026-02-01 (Morning)
+### Added
+- **Infrastructure**: Full Docker VPS support with secrets protection (`.dockerignore`) and data persistence.
+- **Scripts**: New `scripts/docker_entrypoint.sh` for managing dual-bot startup (Main + Telegram) in container.
+
 ### Fixed
 - **Tooling**: Updated `tools/diagnose_market_filters.py` to match new `PositionManager` and `TradingStrategy` signatures.
 - **Scripts**: Modernized `restart_bot.sh` and others to support dynamic branch detection and absolute paths.

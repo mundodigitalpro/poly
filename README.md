@@ -280,10 +280,26 @@ python -m pytest
 
 ## 🐳 Docker
 
+## 🐳 Docker (VPS Deployment)
+
+El proyecto está configurado para despliegue en producción con persistencia de datos y logs.
+
 ```bash
-docker-compose up --build -d
+# 1. Construir imagen
+docker-compose build
+
+# 2. Iniciar en segundo plano
+docker-compose up -d
+
+# 3. Ver logs en tiempo real
 docker-compose logs -f
 ```
+
+**Características:**
+- **Entrypoint Inteligente**: Arranca automáticamente el bot de Telegram (si está configurado) y el bot principal.
+- **Persistencia**: La carpeta `data/` (posiciones) y `logs/` se guardan fuera del contenedor.
+- **Seguridad**: El fichero `.env` se inyecta en tiempo de ejecución, no se copia en la imagen.
+
 
 ## 🔐 Seguridad
 
