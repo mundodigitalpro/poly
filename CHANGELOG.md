@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.14.1] - 2026-02-01 (Morning)
+### Fixed
+- **Tooling**: Updated `tools/diagnose_market_filters.py` to match new `PositionManager` and `TradingStrategy` signatures.
+
 ## [0.14.0] - 2026-01-31 (Night)
 ### Added
 - **Walk the Book (VWAP)**: Calculate real slippage before executing trades

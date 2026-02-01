@@ -36,16 +36,16 @@ poly/
 - **EOA (MetaMask)**: Uses `signature_type=0`. Requires only `POLY_PRIVATE_KEY`.
 - **Credentials**: Managed via `.env` (never commit!). Generate with `python scripts/generate_user_api_keys.py`.
 
-## Current State (as of 2026-01-30 18:05)
-- **Version**: 0.12.3 (Beta)
-- **Latest Change**: Project reorganization (scripts/, tools/, docs/ directories)
-- **Bot Status**: STOPPED
-- **Tests**: 20/20 passing
-- **Active Proposals**: `docs/proposals/PROPOSAL_WHALE_INTEGRATION.md`
+## Current State (as of 2026-02-01)
+- **Version**: 0.14.1-dev
+- **Latest Change**: Fix `diagnose_market_filters.py`, added VWAP & Batch Orders
+- **Bot Status**: STOPPED (Ready for testing new features)
+- **Tests**: 35+ passing (including new VWAP tests)
+- **Active Proposals**: `docs/ESTRATEGIAS_VIABLES_2026.md`
 
 ### Phase History
-- **Phase 0-2.7**: COMPLETED (Core, Integration, Gamma API, Arbitrage Research)
-- **Next**: Phase 3 (Extended Dry Run) + Phase 2.8 (Whale Integration)
+- **Phase 0-2.8**: COMPLETED (Core, Integration, Gamma API, Whale Tracking)
+- **Phase 3**: IN PROGRESS (Extended Dry Run with VWAP & Batch Orders)
 
 ## Useful Commands
 ```bash
