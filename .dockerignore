@@ -1,0 +1,22 @@
+# Environment (SECRETS)
+.env
+.env.backup*
+venv/
+__pycache__/
+*.pyc
+
+# Git
+.git/
+.gitignore
+
+# Logs & Data (Runtime)
+logs/
+data/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db

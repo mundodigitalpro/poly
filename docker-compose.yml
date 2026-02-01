@@ -2,10 +2,10 @@ services:
   poly:
     build: .
     container_name: poly
-    env_file:
-      - .env
-    # Restart policy can be adjusted depending on if it's a daemon or a one-off script
-    # restart: unless-stopped
+    restart: unless-stopped
     volumes:
-      - .:/app
-    command: python poly_client.py
+      - ./.env:/app/.env:ro
+      - ./data:/app/data
+      - ./logs:/app/logs
+    # Uncomment to override entrypoint if needed for debugging
+    # command: python poly_client.py --balance
