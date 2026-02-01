@@ -147,6 +147,11 @@ Sistema de copy trading que sigue automáticamente a los top traders de Polymark
 # Ver leaderboard de whales
 python tools/whale_tracker.py --leaderboard
 
+# 🆕 Encontrar wallet de un trader específico
+python tools/find_whale_wallet.py --name "Theo4"
+python tools/find_whale_wallet.py --market "Trump"
+python tools/find_whale_wallet.py --top 10
+
 # Ver señales de copy trading
 python tools/whale_tracker.py --signals
 
@@ -165,6 +170,14 @@ python main_bot.py  # (pending integration)
   "whale_copy_trading": {
     "enabled": false,  // Activar manualmente cuando esté listo
     "mode": "hybrid",  // original + whale copy
+    "tracked_wallets": {  // 🆕 Trackear wallets específicas
+      "enabled": false,
+      "wallets": [
+        "0x123..."  // Agregar wallet address aquí
+      ],
+      "priority_over_ranking": true,  // Copiar siempre estas wallets
+      "bypass_score_requirement": false  // Respetar score mínimo
+    },
     "copy_rules": {
       "copy_position_size": 0.50,  // $0.50 por copy trade
       "max_copies_per_day": 10,
@@ -179,12 +192,20 @@ python main_bot.py  # (pending integration)
 }
 ```
 
+**🆕 Cómo encontrar wallets:**
+1. Buscar por nombre: `python tools/find_whale_wallet.py --name "Theo4"`
+2. Por market: `python tools/find_whale_wallet.py --market "Trump"`
+3. Top traders: `python tools/find_whale_wallet.py --top 10`
+4. Copiar wallet address del output
+5. Agregar a `config.json` → `tracked_wallets.wallets`
+
 ### Módulos
 
-- `bot/whale_profiler.py` - Volume-weighted ranking system
+- `bot/whale_profiler.py` - Volume-weighted ranking system (+ tracked wallets)
 - `bot/whale_monitor.py` - Real-time signal detection
 - `bot/whale_copy_engine.py` - Decision logic + execution
 - `tools/test_whale_copy.py` - Testing framework
+- `tools/find_whale_wallet.py` - 🆕 Wallet finder (by name/market)
 
 ### Estrategia de Selección
 
@@ -261,6 +282,7 @@ poly/
 │
 ├── tools/                      # Herramientas de análisis
 │   ├── whale_tracker.py        # Tracker de ballenas
+│   ├── find_whale_wallet.py    # 🆕 Wallet finder (by name/market)
 │   ├── test_whale_copy.py      # 🐋 Whale copy testing suite
 │   ├── dutch_book_scanner.py   # Escaneo arbitraje YES/NO
 │   ├── negrisk_scanner.py      # Escaneo multi-outcome

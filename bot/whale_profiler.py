@@ -37,6 +37,13 @@ class WhaleProfiler:
         self.min_score_to_whitelist = self.config.get("min_score_to_whitelist", 60)
         self.max_whitelisted = self.config.get("max_whitelisted_whales", 20)
 
+        # Tracked wallets config
+        tracked_config = self.config.get("tracked_wallets", {})
+        self.tracked_wallets_enabled = tracked_config.get("enabled", False)
+        self.tracked_wallets = set(tracked_config.get("wallets", []))
+        self.tracked_priority = tracked_config.get("priority_over_ranking", True)
+        self.tracked_bypass_score = tracked_config.get("bypass_score_requirement", False)
+
         # Ensure data directory exists
         self.data_file.parent.mkdir(parents=True, exist_ok=True)
 
@@ -306,9 +313,15 @@ class WhaleProfiler:
         # Whitelist top N
         whitelisted_wallets = set(wallet for wallet, _ in eligible[:self.max_whitelisted])
 
-        # Update whitelisted flag
+        # Add tracked wallets to whitelist (if enabled)
+        if self.tracked_wallets_enabled:
+            whitelisted_wallets.update(self.tracked_wallets)
+            logger.info(f"Added {len(self.tracked_wallets)} manually tracked wallets to whitelist")
+
+        # Update whitelisted flag and mark tracked wallets
         for wallet, profile in self.profiles.items():
             profile["whitelisted"] = wallet in whitelisted_wallets
+            profile["manually_tracked"] = wallet in self.tracked_wallets if self.tracked_wallets_enabled else False
 
     def get_top_whales(self, limit: int = 10, whitelisted_only: bool = False) -> List[Dict]:
         """
@@ -367,6 +380,30 @@ class WhaleProfiler:
             if profile.get("whitelisted", False)
         ]
 
+    def get_tracked_wallets(self) -> List[str]:
+        """Get list of manually tracked wallet addresses."""
+        return list(self.tracked_wallets)
+
+    def is_tracked_wallet(self, wallet: str) -> bool:
+        """Check if wallet is manually tracked."""
+        return wallet in self.tracked_wallets if self.tracked_wallets_enabled else False
+
+    def add_tracked_wallet(self, wallet: str):
+        """Add a wallet to tracked list (runtime only, doesn't persist to config)."""
+        if wallet not in self.tracked_wallets:
+            self.tracked_wallets.add(wallet)
+            logger.info(f"Added wallet {wallet[:10]}... to tracked list")
+            # Re-update whitelist to include new tracked wallet
+            self._update_whitelist()
+
+    def remove_tracked_wallet(self, wallet: str):
+        """Remove a wallet from tracked list (runtime only)."""
+        if wallet in self.tracked_wallets:
+            self.tracked_wallets.remove(wallet)
+            logger.info(f"Removed wallet {wallet[:10]}... from tracked list")
+            # Re-update whitelist
+            self._update_whitelist()
+
     def get_stats(self) -> Dict:
         """Get summary statistics about the profiler."""
         return {
@@ -397,7 +434,14 @@ class WhaleProfiler:
             volume = whale["stats"].get("total_volume", 0)
             trades = whale["stats"].get("trade_count", 0)
             markets = whale["stats"].get("unique_markets", 0)
-            status = "✓ WHITELISTED" if whale.get("whitelisted") else ""
+
+            # Status with tracked indicator
+            status_parts = []
+            if whale.get("whitelisted"):
+                status_parts.append("✓ WHITELISTED")
+            if whale.get("manually_tracked"):
+                status_parts.append("⭐ TRACKED")
+            status = " ".join(status_parts)
 
             print(
                 f"{rank:<6} {name:<20} {score:<8.1f} "
@@ -407,5 +451,7 @@ class WhaleProfiler:
         print("=" * 90)
         stats = self.get_stats()
         print(f"Total profiles: {stats['total_profiles']} | Whitelisted: {stats['whitelisted_count']}")
+        if self.tracked_wallets_enabled and len(self.tracked_wallets) > 0:
+            print(f"Manually tracked wallets: {len(self.tracked_wallets)}")
         print(f"Last update: {stats['last_update']}")
         print("=" * 90)

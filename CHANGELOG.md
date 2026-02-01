@@ -6,6 +6,22 @@ All notable changes to this project will be documented in this file.
 ### Added - Whale Copy Trading System 🐋
 - **Core Infrastructure (Phase 1)**: Complete whale copy trading system with volume-weighted ranking and real-time signal detection.
 
+- **🆕 Tracked Wallets Feature (Phase 1.1)**: Ability to manually track specific whale wallets
+  - Configure specific wallets to always copy (bypass ranking system)
+  - Priority mode for trusted traders
+  - Optional score requirement bypass
+  - `tools/find_whale_wallet.py`: New CLI tool to discover wallet addresses
+    - Search traders by name (e.g., "Theo4", "Fredi9999")
+    - Find whales by market activity (e.g., "Trump", "Bitcoin")
+    - View top traders by recent volume
+    - Copy-paste ready wallet addresses
+  - Visual indicators in leaderboard (⭐ TRACKED marker)
+  - Config section: `whale_copy_trading.tracked_wallets`
+    - `enabled`: Enable/disable tracked wallets feature
+    - `wallets`: List of wallet addresses to track
+    - `priority_over_ranking`: Always copy these wallets (default: true)
+    - `bypass_score_requirement`: Skip min score check (default: false)
+
   **New Modules:**
   - `bot/whale_profiler.py`: Volume-weighted ranking system for identifying top traders
     - Composite scoring: volume (40%), consistency (30%), diversity (20%), recency (10%)

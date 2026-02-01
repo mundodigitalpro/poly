@@ -70,6 +70,16 @@
   "whale_copy_trading": {
     "enabled": false,
     "mode": "hybrid",
+    "tracked_wallets": {
+      "enabled": false,
+      "wallets": [],
+      "priority_over_ranking": true,
+      "bypass_score_requirement": false,
+      "examples": [
+        "0x123...",
+        "0xABC..."
+      ]
+    },
     "profiler": {
       "update_interval_seconds": 900,
       "min_whale_size": 500,
