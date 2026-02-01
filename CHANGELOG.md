@@ -149,8 +149,11 @@ All notable changes to this project will be documented in this file.
   - Real-time polling every 30 seconds
 
 ### Next Steps (Phase 2 - Pending)
-- [ ] Integration with `main_bot.py` (dual mode)
-- [ ] Telegram alerts for whale trades
+- [x] Integration with `main_bot.py` (dual mode)
+- [x] Telegram alerts for whale trades
+- [x] Telegram command `/whales`
+- [ ] Real-world testing (20+ trades dry-run)
+- [ ] Performance monitoring and tuning
 - [ ] Real-world testing (20+ trades dry-run)
 - [ ] Performance monitoring and tuning
 

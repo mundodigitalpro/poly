@@ -104,6 +104,8 @@ class TelegramCommandBot:
             return self.cmd_logs()
         elif text == "/stop":
             return self.cmd_stop()
+        elif text == "/whales":
+            return self.cmd_whales()
         else:
             return f"❓ Comando desconocido: {text}\n\nUsa /help para ver comandos disponibles."
 
@@ -115,7 +117,9 @@ class TelegramCommandBot:
 /status - Estado del bot
 /positions - Posiciones abiertas
 /balance - Balance de cuenta
+/balance - Balance de cuenta
 /logs - Últimas líneas del log
+/whales - Estado Copy Trading 🐳
 
 <b>Acciones:</b>
 /simulate - Ejecutar simulación TP/SL
@@ -344,6 +348,51 @@ Para confirmar, ejecuta en terminal:
 <code>pkill -f "python main_bot.py"</code>
 
 O usa: /status para verificar estado."""
+
+    def cmd_whales(self) -> str:
+        """Show whale copy trading stats."""
+        stats_file = self.project_dir / "data" / "whale_copy_stats.json"
+        profiles_file = self.project_dir / "data" / "whale_profiles.json"
+        
+        # Load stats
+        stats = {}
+        if stats_file.exists():
+            try:
+                with open(stats_file) as f:
+                    stats = json.load(f)
+            except: pass
+            
+        # Load profiles
+        top_whales = []
+        if profiles_file.exists():
+            try:
+                with open(profiles_file) as f:
+                    data = json.load(f)
+                    profiles = list(data.get("profiles", {}).values())
+                    # Sort by score
+                    profiles.sort(key=lambda x: x.get("score", 0), reverse=True)
+                    top_whales = profiles[:3]
+            except: pass
+
+        copied = stats.get("signals_copied", 0)
+        rejected = stats.get("signals_rejected", 0)
+        pnl = stats.get("total_pnl", 0.0)
+        
+        msg = [f"🐳 <b>Whale Copy Status</b>\n"]
+        msg.append(f"📡 Signals: {stats.get('signals_evaluated', 0)}")
+        msg.append(f"✅ Copied: {copied}")
+        msg.append(f"🛡️ Rejected: {rejected}")
+        msg.append(f"💰 P&L: ${pnl:+.2f}\n")
+        
+        if top_whales:
+            msg.append("🏆 <b>Top Whales:</b>")
+            for i, w in enumerate(top_whales, 1):
+                name = w.get("name", "Anon")[:15]
+                score = w.get("score", 0)
+                vol = w.get("stats", {}).get("total_volume", 0)
+                msg.append(f"{i}. <b>{name}</b> ({score}) ${vol/1000:.1f}k")
+                
+        return "\n".join(msg)
 
     def run(self):
         """Main loop to listen for commands."""

@@ -7,7 +7,7 @@ Cliente Python para trading en Polymarket via API.
 **Operativo** - Trading funcionando con Magic Link ✅
 **Bot Autónomo (v0.14.1)** - Producción con WebSocket + Concurrent Orders + Telegram + VWAP ✅
 **Filtro Mercados Resueltos** - min_days_to_resolve implementado ✅
-**🐋 Whale Copy Trading (v0.15.0)** - Core infrastructure completada, pending integration ⚙️
+**🐋 Whale Copy Trading (v0.15.0)** - Integrated & Active (Hybrid Mode) ✅
 
 ## 🚀 Inicio Rápido
 
@@ -239,7 +239,7 @@ python tools/test_whale_copy.py --live-demo
 
 # Activar whale copy trading (editar config.json primero)
 # "whale_copy_trading": { "enabled": true }
-python main_bot.py  # (pending integration)
+python main_bot.py  # (Integrated in v0.15.0)
 ```
 
 ### Configuración
@@ -326,7 +326,7 @@ Antes de copiar, el sistema valida:
 ### Estado Actual
 
 - ✅ **Phase 1 (Core Infrastructure)**: Completada
-- ⏳ **Phase 2 (Integration)**: Pending - integración con main_bot.py
+- ✅ **Phase 2 (Integration)**: Completada - Integrado con main_bot.py y Telegram
 - ⏳ **Phase 3 (Testing)**: Pending - 20+ trades dry-run
 - ⏳ **Phase 4 (Production)**: Pending - activación real
 

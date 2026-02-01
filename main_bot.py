@@ -19,6 +19,10 @@ from bot.market_scanner import MarketScanner
 from bot.position_manager import Position, PositionManager
 from bot.strategy import TradingStrategy
 from bot.trader import BotTrader, TradeFill
+from bot.whale_profiler import WhaleProfiler
+from bot.whale_monitor import WhaleMonitor
+from bot.whale_copy_engine import WhaleCopyEngine
+from tools.telegram_alerts import get_bot
 
 
 def _best_bid_ask(order_book) -> Tuple[float, float]:
@@ -485,6 +489,80 @@ def _calculate_available_capital(config, position_manager, client, logger) -> fl
     return max(0.0, available)
 
 
+def _run_whale_cycle(
+    logger,
+    monitor: WhaleMonitor,
+    copy_engine: WhaleCopyEngine,
+    telegram_bot=None
+) -> int:
+    """
+    Run one cycle of whale monitoring and copy trading.
+
+    Returns:
+        Number of signals processed
+    """
+    try:
+        # 1. Scan for signals
+        signals = monitor.scan_for_signals()
+
+        if not signals:
+            return 0
+
+        logger.info(f"Whale cycle: {len(signals)} signals detected")
+        copies_executed = 0
+
+        # 2. Evaluate and Execute
+        for signal in signals:
+            # Check if we should copy
+            should_copy, reason, params = copy_engine.evaluate_signal(signal)
+
+            if should_copy:
+                # Check global dry_run from config
+                global_dry_run = copy_engine.config.get("bot", {}).get("dry_run", True)
+                
+                result = copy_engine.execute_copy(signal, params, dry_run=global_dry_run)
+
+                if result["success"]:
+                    copies_executed += 1
+                    # 3. Telegram Alert
+                    if telegram_bot:
+                        _send_whale_alert(telegram_bot, signal, result, params, global_dry_run)
+            else:
+                logger.debug(f"Signal rejected: {reason}")
+
+        return len(signals)
+
+    except Exception as e:
+        logger.error(f"Error in whale cycle: {e}")
+        return 0
+
+
+def _send_whale_alert(bot, signal, result, params, dry_run):
+    """Send Telegram alert for whale copy."""
+    try:
+        emoji = "🐳" if not dry_run else "🧪"
+        mode_str = "[DRY RUN]" if dry_run else "[LIVE]"
+        
+        title = f"{emoji} Whale Copy Executed {mode_str}"
+        
+        side = params['side']
+        side_emoji = "🟢" if side == "BUY" else "🔴"
+        
+        msg = (
+            f"<b>Whale:</b> {params['whale_name']}\n"
+            f"<b>Market:</b> {signal.get('market', '')[:40]}...\n"
+            f"<b>Token:</b> <code>{params['token_id'][:10]}...</code>\n"
+            f"<b>Side:</b> {side_emoji} {side}\n"
+            f"<b>Size:</b> ${params['size']:.2f}\n"
+            f"<b>Confidence:</b> {params['confidence']}%\n"
+            f"<b>Reason:</b> {signal.get('reason', 'whitelisted')}"
+        )
+        
+        bot.send_alert(title, msg)
+    except Exception as e:
+        print(f"Failed to send alert: {e}")
+
+
 def run_loop():
     parser = argparse.ArgumentParser(description="Polymarket Autonomous Bot")
     parser.add_argument("--once", action="store_true", help="Run a single loop")
@@ -501,6 +579,17 @@ def run_loop():
     if args.verbose_filters:
         scanner.verbose_filters = True
     trader = BotTrader(client, config, logger)
+
+    # Initialize Whale System
+    profiler = WhaleProfiler(config=config)
+    monitor = WhaleMonitor(profiler=profiler, config=config)
+    copy_engine = WhaleCopyEngine(config, profiler, trader, position_manager, scanner)
+    
+    # Try to get Telegram bot
+    telegram_bot = get_bot()
+
+    whale_poll_interval = config.get("whale_copy_trading", {}).get("monitor", {}).get("poll_interval_seconds", 30)
+    last_whale_scan_ts = 0.0
 
     scan_interval = config.get("bot.loop_interval_seconds", 120)
     position_check_interval = config.get("bot.position_check_interval_seconds", 10)
@@ -550,6 +639,12 @@ def run_loop():
             if fill:
                 last_buy_ts = time.time()
 
+        # Whale Cycle
+        time_since_whale_scan = now - last_whale_scan_ts
+        if time_since_whale_scan >= whale_poll_interval:
+            _run_whale_cycle(logger, monitor, copy_engine, telegram_bot)
+            last_whale_scan_ts = time.time()
+
         if args.once:
             break
 
@@ -578,6 +673,17 @@ async def run_loop_async():
     if args.verbose_filters:
         scanner.verbose_filters = True
     trader = BotTrader(client, config, logger)
+
+    # Initialize Whale System
+    profiler = WhaleProfiler(config=config)
+    monitor = WhaleMonitor(profiler=profiler, config=config)
+    copy_engine = WhaleCopyEngine(config, profiler, trader, position_manager, scanner)
+    
+    # Try to get Telegram bot
+    telegram_bot = get_bot()
+
+    whale_poll_interval = config.get("whale_copy_trading", {}).get("monitor", {}).get("poll_interval_seconds", 30)
+    last_whale_scan_ts = 0.0
 
     scan_interval = config.get("bot.loop_interval_seconds", 120)
     blacklist_cfg = config.get("blacklist", {})
@@ -649,6 +755,12 @@ async def run_loop_async():
                 last_scan_ts = time.time()
                 if fill:
                     last_buy_ts = time.time()
+
+            # Whale Cycle
+            time_since_whale_scan = now - last_whale_scan_ts
+            if time_since_whale_scan >= whale_poll_interval:
+                _run_whale_cycle(logger, monitor, copy_engine, telegram_bot)
+                last_whale_scan_ts = time.time()
 
             if args.once:
                 break
