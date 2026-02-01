@@ -87,11 +87,10 @@ def diagnose_markets(show_all: bool = False, export_csv: bool = False):
 
     # Create minimal dependencies
     position_manager = PositionManager(
-        positions_file=str(Path(__file__).parent.parent / "data" / "positions.json"),
-        logger=logger
+        data_dir=str(Path(__file__).parent.parent / "data")
     )
 
-    strategy = TradingStrategy(config=config, logger=logger)
+    strategy = TradingStrategy(config=config)
 
     # Create scanner
     scanner = MarketScanner(
