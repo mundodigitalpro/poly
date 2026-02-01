@@ -5,7 +5,7 @@ Cliente Python para trading en Polymarket via API.
 ## ✅ Estado
 
 **Operativo** - Trading funcionando con Magic Link ✅
-**Bot Autónomo (v0.13.2)** - Producción con WebSocket + Concurrent Orders + Telegram ✅
+**Bot Autónomo (v0.14.1)** - Producción con WebSocket + Concurrent Orders + Telegram + VWAP ✅
 **Filtro Mercados Resueltos** - min_days_to_resolve implementado ✅
 
 ## 🚀 Inicio Rápido
@@ -149,7 +149,7 @@ python scripts/diagnose_config.py
 python scripts/test_all_sig_types.py
 ```
 
-## 🤖 Bot Autónomo (v0.13.2)
+## 🤖 Bot Autónomo (v0.14.1)
 
 Bot de trading 24/7 con arquitectura profesional:
 

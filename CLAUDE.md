@@ -537,6 +537,26 @@ bash scripts/stop_bot.sh
 
 **Documentation**: `docs/SCRIPTS_DISPONIBLES.md` (complete guide to all scripts)
 
+### 2026-02-01: Phase 3 Features & Script Modernization (v0.14.1)
+
+**1. Walk the Book (VWAP)**
+- **Problem**: Large orders suffered high slippage using simple `best_ask` pricing.
+- **Solution**: Implemented `MarketScanner.walk_the_book()` to calculate real Volume-Weighted Average Price.
+- **Impact**: Precision entry pricing; prevents trades where slippage > 2%.
+
+**2. Pre-signed Batch Orders**
+- **Problem**: Sequential signing of BUY+TP+SL added ~300ms latency.
+- **Solution**: Use `client.create_order()` to pre-sign all 3 orders offline, then `client.post_order()` in rapid succession.
+- **Impact**: Execution time reduced from ~600ms to ~350ms.
+
+**3. Script Modernization**
+- **Problem**: Management scripts had hardcoded paths (`/home/user/poly`) and old branch references.
+- **Solution**: Updated `restart_bot.sh` and friends to use:
+  - `git rev-parse HEAD` for dynamic branch detection.
+  - Absolute paths (`/home/josejordan/poly`).
+  - `venv/bin/python` for execution.
+  - Argument passing (`$@`) for flags like `--verbose-filters`.
+
 ---
 
 ## Security Considerations

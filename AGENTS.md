@@ -47,7 +47,7 @@ The project is organized into logical directories:
 - Environment variables are uppercase with `POLY_` prefix (see `.env.example`).
 
 ## Testing Guidelines
-- No automated test suite is configured. Use `python test_all_sig_types.py` for auth verification and run CLI flows manually with small amounts.
+- **Automated Test Suite**: Run `python -m pytest` to execute unit tests (strategy, position manager). Use `scripts/test_all_sig_types.py` for full auth matrix verification.
 - When touching auth or signing code, validate both Magic Link (`signature_type=1`) and EOA (`signature_type=0`) paths.
 
 ## Multi-Agent Collaboration
