@@ -14,6 +14,11 @@ All notable changes to this project will be documented in this file.
 - **Data**: Corrected `positions.json` initialization structure (dict instead of list).
 - **Cleanup**: Archived legacy `auto_sell.py` to `legacy/` directory.
 
+### Changed
+- **Config**: Relaxed default market filters to increase trading volume.
+  - Expanded odds range: `0.30` - `0.70` (was 0.45-0.60).
+  - Increased max markets: `500` (was 200).
+
 ## [0.14.0] - 2026-01-31 (Night)
 ### Added
 - **Walk the Book (VWAP)**: Calculate real slippage before executing trades
