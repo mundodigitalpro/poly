@@ -20,6 +20,7 @@ Thumbs.db
 data/positions.json
 data/blacklist.json
 data/stats.json
+data/simulation_results.json
 
 # Backups
 *.bak
