@@ -7,6 +7,7 @@ Cliente Python para trading en Polymarket via API.
 **Operativo** - Trading funcionando con Magic Link ✅
 **Bot Autónomo (v0.14.1)** - Producción con WebSocket + Concurrent Orders + Telegram + VWAP ✅
 **Filtro Mercados Resueltos** - min_days_to_resolve implementado ✅
+**🐋 Whale Copy Trading (v0.15.0)** - Core infrastructure completada, pending integration ⚙️
 
 ## 🚀 Inicio Rápido
 
@@ -207,6 +208,128 @@ tail -f logs/bot_monitor_*.log
 - `bot_plan.md`: Plan original del bot
 - `CLAUDE.md`, `GEMINI.md`, `AGENTS.md`: Memorias del equipo AI
 
+## 🐋 Whale Copy Trading (v0.13.0)
+
+Sistema de copy trading que sigue automáticamente a los top traders de Polymarket basándose en volumen de trading y actividad.
+
+### Características Principales
+
+- **Volume-Weighted Ranking**: Identifica top 20 whales basado en volumen, consistencia, diversidad y recencia
+- **Real-Time Monitoring**: Polling cada 30s para detectar trades de whales whitelisted
+- **11 Validaciones de Riesgo**: Checks exhaustivos antes de copiar cualquier trade
+- **Whale Consensus**: Detecta cuando 3+ whales operan en el mismo market (señal fuerte)
+- **Dual Mode**: Opera junto a la estrategia original del bot (configurable)
+
+### Quick Start
+
+```bash
+# Ver leaderboard de whales
+python tools/whale_tracker.py --leaderboard
+
+# 🆕 Encontrar wallet de un trader específico
+python tools/find_whale_wallet.py --name "Theo4"
+python tools/find_whale_wallet.py --market "Trump"
+python tools/find_whale_wallet.py --top 10
+
+# Ver señales de copy trading
+python tools/whale_tracker.py --signals
+
+# Testear el sistema completo
+python tools/test_whale_copy.py --live-demo
+
+# Activar whale copy trading (editar config.json primero)
+# "whale_copy_trading": { "enabled": true }
+python main_bot.py  # (pending integration)
+```
+
+### Configuración
+
+```json
+{
+  "whale_copy_trading": {
+    "enabled": false,  // Activar manualmente cuando esté listo
+    "mode": "hybrid",  // original + whale copy
+    "tracked_wallets": {  // 🆕 Trackear wallets específicas
+      "enabled": false,
+      "wallets": [
+        "0x123..."  // Agregar wallet address aquí
+      ],
+      "priority_over_ranking": true,  // Copiar siempre estas wallets
+      "bypass_score_requirement": false  // Respetar score mínimo
+    },
+    "copy_rules": {
+      "copy_position_size": 0.50,  // $0.50 por copy trade
+      "max_copies_per_day": 10,
+      "require_whale_score_above": 70
+    },
+    "risk_management": {
+      "max_copy_allocation": 5.0,  // Max $5 en copy trades
+      "stop_if_daily_loss": 2.0,    // Stop si pierde $2/día
+      "exit_strategy": "hybrid"     // Follow whale + TP/SL
+    }
+  }
+}
+```
+
+**🆕 Cómo encontrar wallets:**
+1. Buscar por nombre: `python tools/find_whale_wallet.py --name "Theo4"`
+2. Por market: `python tools/find_whale_wallet.py --market "Trump"`
+3. Top traders: `python tools/find_whale_wallet.py --top 10`
+4. Copiar wallet address del output
+5. Agregar a `config.json` → `tracked_wallets.wallets`
+
+### Módulos
+
+- `bot/whale_profiler.py` - Volume-weighted ranking system (+ tracked wallets)
+- `bot/whale_monitor.py` - Real-time signal detection
+- `bot/whale_copy_engine.py` - Decision logic + execution
+- `tools/test_whale_copy.py` - Testing framework
+- `tools/find_whale_wallet.py` - 🆕 Wallet finder (by name/market)
+
+### Estrategia de Selección
+
+**Sin win-rate data** (no disponible en API), usamos heurísticas proxy:
+
+1. **Volume Score (40%)**: Whales con >$10k volumen probablemente rentables
+2. **Consistency (30%)**: Min 50 trades para validar actividad sostenida
+3. **Diversity (20%)**: Trading en 20+ markets diferentes = expertise
+4. **Recency (10%)**: Activo en últimas 24h = trader activo
+
+### Risk Management (11 Checks)
+
+Antes de copiar, el sistema valida:
+1. ✅ Whale en whitelist (score >70)
+2. ✅ Trade <10 minutos (freshness)
+3. ✅ Solo BUY (configurable)
+4. ✅ Size entre $500-$50k
+5. ✅ Pasa market filters
+6. ✅ Capital disponible
+7. ✅ <10 copies hoy
+8. ✅ <$5 allocation total
+9. ✅ Min 3 markets diversification
+10. ✅ Daily loss <$2
+11. ✅ No blacklisted
+
+### Exit Strategy
+
+**Hybrid** (default): Follow whale + TP/SL backstop
+- Monitor whale para detectar cuando vende → copiar la venta
+- Backstop TP/SL si whale nunca vende
+- Max hold: 7 días → auto-exit
+
+### Documentación
+
+- `docs/WHALE_COPY_TRADING_DESIGN.md` - Arquitectura completa (606 líneas)
+- `docs/ESTRATEGIAS_REALES_2026.md` - Research backing (458 líneas)
+- Top whales: +$22M lifetime (Theo4, Fredi9999 según NPR)
+
+### Estado Actual
+
+- ✅ **Phase 1 (Core Infrastructure)**: Completada
+- ⏳ **Phase 2 (Integration)**: Pending - integración con main_bot.py
+- ⏳ **Phase 3 (Testing)**: Pending - 20+ trades dry-run
+- ⏳ **Phase 4 (Production)**: Pending - activación real
+
 ## 📁 Estructura
 
 ```
@@ -227,7 +350,10 @@ poly/
 │   ├── trader.py               # Ejecución de órdenes (concurrent)
 │   ├── websocket_client.py     # WebSocket real-time (v0.13)
 │   ├── websocket_monitor.py    # Monitoring async (v0.13)
-│   └── whale_service.py        # Integración whale tracking
+│   ├── whale_service.py        # Integración whale tracking
+│   ├── whale_profiler.py       # 🐋 Volume-weighted ranking
+│   ├── whale_monitor.py        # 🐋 Real-time signal detection
+│   └── whale_copy_engine.py    # 🐋 Copy trading logic
 │
 ├── scripts/                    # Gestión y setup
 │   ├── generate_user_api_keys.py  # Generar credentials
@@ -243,6 +369,8 @@ poly/
 │
 ├── tools/                      # Herramientas de análisis
 │   ├── whale_tracker.py           # Tracker de ballenas
+│   ├── find_whale_wallet.py       # 🆕 Wallet finder (by name/market)
+│   ├── test_whale_copy.py         # 🐋 Whale copy testing suite
 │   ├── dutch_book_scanner.py      # Escaneo arbitraje YES/NO
 │   ├── negrisk_scanner.py         # Escaneo multi-outcome
 │   ├── analyze_positions.py       # Análisis de riesgo
@@ -253,6 +381,8 @@ poly/
 │
 ├── docs/                       # Documentación
 │   ├── bot_plan.md             # Diseño del bot autónomo
+│   ├── WHALE_COPY_TRADING_DESIGN.md  # 🐋 Arquitectura whale copy
+│   ├── ESTRATEGIAS_REALES_2026.md    # 🐋 Research de estrategias
 │   ├── proposals/              # Propuestas de features
 │   └── team/                   # Docs del equipo AI
 │

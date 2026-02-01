@@ -2,6 +2,165 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.15.0] - 2026-02-01 (Evening)
+### Added - Whale Copy Trading System 🐋
+- **Core Infrastructure (Phase 1)**: Complete whale copy trading system with volume-weighted ranking and real-time signal detection.
+
+- **🆕 Tracked Wallets Feature (Phase 1.1)**: Ability to manually track specific whale wallets
+  - Configure specific wallets to always copy (bypass ranking system)
+  - Priority mode for trusted traders
+  - Optional score requirement bypass
+  - `tools/find_whale_wallet.py`: New CLI tool to discover wallet addresses
+    - Search traders by name (e.g., "Theo4", "Fredi9999")
+    - Find whales by market activity (e.g., "Trump", "Bitcoin")
+    - View top traders by recent volume
+    - Copy-paste ready wallet addresses
+  - Visual indicators in leaderboard (⭐ TRACKED marker)
+  - Config section: `whale_copy_trading.tracked_wallets`
+    - `enabled`: Enable/disable tracked wallets feature
+    - `wallets`: List of wallet addresses to track
+    - `priority_over_ranking`: Always copy these wallets (default: true)
+    - `bypass_score_requirement`: Skip min score check (default: false)
+
+  **New Modules:**
+  - `bot/whale_profiler.py`: Volume-weighted ranking system for identifying top traders
+    - Composite scoring: volume (40%), consistency (30%), diversity (20%), recency (10%)
+    - Auto-whitelist management (top 20 whales with score >60)
+    - Persistent profiles in `data/whale_profiles.json`
+    - Visual leaderboard with rankings and stats
+
+  - `bot/whale_monitor.py`: Real-time whale trade monitoring
+    - Polls API every 30s for new trades
+    - Filters by whitelist (only top-scored traders)
+    - Detects whale consensus (3+ whales on same market)
+    - Generates signals with confidence scores (0-100)
+    - Age filtering (only trades <10 minutes old)
+
+  - `bot/whale_copy_engine.py`: Decision logic and execution
+    - 11 validation checks before copying any trade
+    - Risk management: daily limits, allocation caps, diversification
+    - Dry-run mode for safe testing
+    - Position tracking with P&L analytics
+    - Configurable exit strategies (follow whale, TP/SL, hybrid)
+
+  - `tools/test_whale_copy.py`: Comprehensive testing framework
+    - Standalone testing of all components
+    - Live demo mode with interactive walkthrough
+    - Statistics and performance reporting
+
+  **Configuration:**
+  - Added `whale_copy_trading` section to `config.json`
+    - Enabled: false (requires manual activation)
+    - Mode: hybrid (original + whale copy strategies)
+    - Copy size: $0.50 per trade
+    - Limits: max 10 copies/day, max $5 total allocation
+    - Risk: $2 daily loss limit, min 3 markets diversification
+
+  **Risk Management Features:**
+  - Whale whitelist validation (score >70 required)
+  - Trade age limit (max 10 minutes)
+  - Side filtering (BUY only by default)
+  - Size bounds ($500-$50k whale trades)
+  - Capital availability checks
+  - Daily copy limits (max 10/day)
+  - Risk allocation caps (max $5 total)
+  - Diversification requirements (min 3 markets)
+  - Daily loss limits ($2 stop)
+  - Market filters (optional, uses same as main strategy)
+  - Blacklist support
+
+  **Exit Strategies:**
+  - Follow the whale (monitor for whale sell signal)
+  - Own TP/SL (use dynamic targets like main strategy)
+  - Hybrid (default: follow whale with TP/SL backstop)
+
+### Added - Trading Strategies Research
+- **Comprehensive 2026 Strategy Analysis**: Research of real-world strategies from X.com, Reddit, GitHub
+  - `docs/ESTRATEGIAS_REALES_2026.md`: 458-line analysis of viable strategies
+    - Market context (volume -84% post-election, high competition)
+    - 7 strategies evaluated (3 viable, 4 clickbait)
+    - Data-backed evidence from NPR, DataWallet, GitHub repos
+    - Implementation recommendations for our bot
+
+  **Viable Strategies Identified:**
+  1. ✅ Whale Copy Trading (implemented in v0.13.0)
+  2. ✅ High-Probability Harvesting (>95% odds, <7 days)
+  3. ✅ News-Based Trading (30-60s delay advantage)
+  4. ✅ Cross-Platform Arbitrage (Kalshi, Opinion, Polymarket)
+  5. ✅ Domain Expertise Focus (politics, sports)
+
+  **Strategies Debunked:**
+  1. ❌ Flash crash on 15-min markets (fees killed the edge)
+  2. ❌ Dutch book arbitrage (HFT only, <10ms required)
+  3. ❌ Passive market making (no longer profitable in 2026)
+  4. ❌ AI prediction bots (edge is in structure, not prediction)
+
+### Documentation
+- `docs/WHALE_COPY_TRADING_DESIGN.md`: Complete architecture design (606 lines)
+  - System architecture and component interactions
+  - Pragmatic approach (volume-weighted scoring, no win-rate data needed)
+  - Data structures and API integration
+  - Implementation phases and testing plan
+  - Risk mitigation strategies
+  - KPIs and success metrics
+
+- `docs/ESTRATEGIAS_REALES_2026.md`: Research backing (458 lines)
+  - Real-world strategy analysis with sources
+  - Performance data from top traders ($22M+ lifetime)
+  - Market efficiency analysis
+  - Implementation roadmap
+
+- Updated `.gitignore`: Added whale copy trading runtime files
+  - `data/whale_profiles.json`
+  - `data/whale_copy_stats.json`
+  - `data/whale_copy_positions.json`
+
+### Changed
+- **Config Schema**: Expanded with whale_copy_trading section
+  - Profiler settings (update intervals, scoring thresholds)
+  - Monitor settings (poll frequency, consensus detection)
+  - Copy rules (sides, sizes, limits)
+  - Risk management (allocation, diversification, loss limits)
+  - Alert settings (Telegram integration ready)
+
+### Technical Details
+- **Whale Selection Method**: Volume-weighted ranking (no win-rate needed)
+  - Assumption: High-volume traders likely profitable (or would have quit)
+  - Composite score balances multiple factors
+  - Top 20 whitelisted automatically
+  - Consensus detection as secondary signal
+
+- **Copy Validation Pipeline**: 11-step validation before execution
+  1. Whale whitelist check
+  2. Blacklist check
+  3. Trade age validation
+  4. Side filter (BUY/SELL)
+  5. Trade size bounds
+  6. Market filters (optional)
+  7. Capital availability
+  8. Daily copy limits
+  9. Risk allocation limits
+  10. Diversification requirements
+  11. Daily loss limits
+
+- **Data Sources**:
+  - Polymarket trades API: `https://data-api.polymarket.com/trades`
+  - Public whale data (no auth required)
+  - Real-time polling every 30 seconds
+
+### Next Steps (Phase 2 - Pending)
+- [ ] Integration with `main_bot.py` (dual mode)
+- [ ] Telegram alerts for whale trades
+- [ ] Real-world testing (20+ trades dry-run)
+- [ ] Performance monitoring and tuning
+
+### Research Sources
+- NPR: Top trader analysis (+$22M lifetime profits)
+- DataWallet: Win rate statistics (16.8% profitable wallets)
+- GitHub: discountry/polymarket-trading-bot, warproxxx/poly-maker
+- Medium, CoinsBench: Strategy analyses
+- X.com: @Param_eth, @thejayden, @itslirrato
+
 ## [0.14.1] - 2026-02-01 (Morning)
 ### Added
 - **Infrastructure**: Full Docker VPS support with secrets protection (`.dockerignore`) and data persistence.
