@@ -14,14 +14,15 @@ Four AI agents collaborate on this project:
 ## Project Overview
 A Python client and autonomous trading bot for Polymarket using `py-clob-client`.
 - **Repo**: `/home/josejordan/poly`
-- **Key Entry Points**: `poly_client.py` (CLI), `main_bot.py` (Bot), `place_order.py` (Manual), `auto_sell.py` (TP/SL)
+- **Key Entry Points**: `poly_client.py` (CLI), `main_bot.py` (Bot), `place_order.py` (Manual)
 
 ## Project Structure (v0.12.3)
 ```
 poly/
-├── poly_client.py, main_bot.py, place_order.py, auto_sell.py  # Entry points
+├── poly_client.py, main_bot.py, place_order.py  # Entry points
 ├── config.json                 # Bot configuration
 ├── bot/                        # Core modules (scanner, trader, strategy, etc.)
+├── legacy/                     # Archived scripts (auto_sell.py)
 ├── scripts/                    # Utilities (generate_user_api_keys.py, verify_wallet.py, etc.)
 ├── tools/                      # Analysis (whale_tracker.py, dutch_book_scanner.py, etc.)
 ├── docs/                       # Documentation (bot_plan.md, proposals/, team/)

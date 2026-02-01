@@ -8,6 +8,7 @@ All notable changes to this project will be documented in this file.
 - **Scripts**: Modernized `restart_bot.sh` and others to support dynamic branch detection and absolute paths.
 - **Whale Service**: Fixed `ImportError` by restructuring `tools/` as a python package.
 - **Data**: Corrected `positions.json` initialization structure (dict instead of list).
+- **Cleanup**: Archived legacy `auto_sell.py` to `legacy/` directory.
 
 ## [0.14.0] - 2026-01-31 (Night)
 ### Added
