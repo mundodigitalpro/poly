@@ -11,7 +11,7 @@ echo ""
 
 # Check if we're in the right directory
 if [ ! -f "main_bot.py" ]; then
-    echo "Error: Please run this script from the /home/user/poly directory"
+    echo "Error: Please run this script from the /home/josejordan/poly directory"
     exit 1
 fi
 

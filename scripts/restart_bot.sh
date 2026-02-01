@@ -9,7 +9,7 @@ echo "REINICIO DEL BOT POLYMARKET"
 echo "================================================================================"
 echo ""
 
-cd /home/user/poly
+cd /home/josejordan/poly
 
 # 1. Buscar proceso del bot
 echo "🔍 Buscando procesos del bot..."
@@ -46,8 +46,10 @@ fi
 # 3. Pull últimos cambios
 echo ""
 echo "📥 Descargando últimos cambios..."
-git fetch origin claude/investigate-article-implementation-CG7Bb
-git pull origin claude/investigate-article-implementation-CG7Bb
+CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+echo "   Rama actual: $CURRENT_BRANCH"
+git fetch origin $CURRENT_BRANCH
+git pull origin $CURRENT_BRANCH
 echo "✓ Cambios descargados"
 
 # 4. Verificar configuración
@@ -133,6 +135,7 @@ echo "  • Concurrent Orders: Habilitado"
 if [ "$TELEGRAM_ENABLED" = true ]; then
     echo "  • Bot de Telegram: Habilitado"
 fi
+echo "  • Argumentos extra: $@"
 echo ""
 echo "================================================================================"
 echo ""
@@ -140,7 +143,7 @@ echo ""
 # Iniciar bot de Telegram en background si está configurado
 if [ "$TELEGRAM_ENABLED" = true ]; then
     echo "📱 Iniciando bot de Telegram en background..."
-    nohup python tools/telegram_bot.py > logs/telegram_bot.log 2>&1 &
+    nohup venv/bin/python tools/telegram_bot.py > logs/telegram_bot.log 2>&1 &
     TELEGRAM_PID=$!
     sleep 2
 
@@ -162,8 +165,8 @@ echo ""
 echo "================================================================================"
 echo ""
 
-# Iniciar bot principal (foreground)
-python main_bot.py
+# Iniciar bot principal (foreground) con argumentos pasados al script
+venv/bin/python main_bot.py "$@"
 
 # Si el bot principal se detiene, detener también Telegram
 if [ "$TELEGRAM_ENABLED" = true ] && [ ! -z "$TELEGRAM_PID" ]; then

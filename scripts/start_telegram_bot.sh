@@ -8,7 +8,7 @@ echo "INICIAR BOT DE TELEGRAM"
 echo "================================================================================"
 echo ""
 
-cd /home/user/poly
+cd /home/josejordan/poly
 
 # 1. Verificar si ya está corriendo
 TELEGRAM_PID=$(pgrep -f "python.*telegram_bot.py" || true)

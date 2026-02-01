@@ -6,7 +6,7 @@ echo "ESTADO DE LOS BOTS POLYMARKET"
 echo "================================================================================"
 echo ""
 
-cd /home/user/poly
+cd /home/josejordan/poly
 
 # 1. Bot principal
 echo "🤖 Bot Principal (main_bot.py)"

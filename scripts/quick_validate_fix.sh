@@ -9,7 +9,7 @@ echo "VALIDACIÓN RÁPIDA DEL FIX - Filtro de Mercados Resueltos"
 echo "================================================================================"
 echo ""
 
-cd /home/user/poly
+cd /home/josejordan/poly
 
 # Check 1: Config has min_days_to_resolve
 echo "✓ Verificación 1: Configuración del filtro"
