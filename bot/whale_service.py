@@ -2,9 +2,7 @@
 
 from typing import Dict, Optional
 from datetime import datetime, timedelta
-import sys
-sys.path.insert(0, '..')
-from whale_tracker import WhaleTracker
+from tools.whale_tracker import WhaleTracker
 
 
 class WhaleService:
