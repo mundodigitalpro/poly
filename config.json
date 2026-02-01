@@ -72,7 +72,7 @@
     "use_concurrent_orders": true,
     "use_websocket": true,
     "use_gasless": false,
-    "use_presign_batch": false,
+    "use_presign_batch": true,
     "use_slippage_check": true,
     "max_slippage_percent": 2.0,
     "order_check_interval_seconds": 30,

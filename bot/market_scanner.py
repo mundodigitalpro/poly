@@ -26,13 +26,16 @@ class MarketScanner:
             config: BotConfig instance
             logger: BotLogger instance
             position_manager: PositionManager instance
+            position_manager: PositionManager instance
             strategy: TradingStrategy instance
+            verbose_filters: Whether to log all rejections at INFO level
         """
         self.client = client
         self.config = config
         self.logger = logger
         self.position_manager = position_manager
         self.strategy = strategy
+        self.verbose_filters = False
 
         self.filters = config.get("market_filters", {})
         self.market_source = self.filters.get("source", "sampling")
@@ -233,10 +236,14 @@ class MarketScanner:
         spread_percent = self._spread_percent(best_bid, best_ask)
 
         if not self._passes_price_filters(odds, spread_percent, token_id, days_to_resolve):
-            self.logger.debug(
+            msg = (
                 f"Rejected {token_id[:8]}: odds={odds:.2f} spread={spread_percent:.1f}% "
                 f"days={days_to_resolve}"
             )
+            if self.verbose_filters:
+                self.logger.info(msg)
+            else:
+                self.logger.debug(msg)
             return None, "price_filtered"
 
         score = self.strategy.calculate_market_score(
@@ -298,16 +305,20 @@ class MarketScanner:
         # Volume check (use min_volume_24h if set, else min_volume_usd)
         effective_min_vol = min_volume_24h if min_volume_24h > 0 else min_volume
         if volume_usd > 0 and volume_usd < effective_min_vol:
-            self.logger.debug(
-                f"Rejected {token_id[:8]}: volume={volume_usd:.2f} < {effective_min_vol}"
-            )
+            msg = f"Rejected {token_id[:8]}: volume={volume_usd:.2f} < {effective_min_vol}"
+            if self.verbose_filters:
+                self.logger.info(msg)
+            else:
+                self.logger.debug(msg)
             return False
 
         # Liquidity check (only if Gamma data available and filter set)
         if min_liquidity > 0 and liquidity > 0 and liquidity < min_liquidity:
-            self.logger.debug(
-                f"Rejected {token_id[:8]}: liquidity={liquidity:.2f} < {min_liquidity}"
-            )
+            msg = f"Rejected {token_id[:8]}: liquidity={liquidity:.2f} < {min_liquidity}"
+            if self.verbose_filters:
+                self.logger.info(msg)
+            else:
+                self.logger.debug(msg)
             return False
 
         # Resolution date checks
@@ -322,9 +333,11 @@ class MarketScanner:
             return False
 
         if days_to_resolve > max_days:
-            self.logger.debug(
-                f"Rejected {token_id[:8]}: days={days_to_resolve} > {max_days}"
-            )
+            msg = f"Rejected {token_id[:8]}: days={days_to_resolve} > {max_days}"
+            if self.verbose_filters:
+                self.logger.info(msg)
+            else:
+                self.logger.debug(msg)
             return False
 
         return True
@@ -338,14 +351,18 @@ class MarketScanner:
         max_spread = self.filters.get("max_spread_percent", 5.0)
 
         if not (min_odds <= odds <= max_odds):
-            self.logger.debug(
-                f"Rejected {token_id[:8]}: odds={odds:.2f} outside [{min_odds}, {max_odds}]"
-            )
+            msg = f"Rejected {token_id[:8]}: odds={odds:.2f} outside [{min_odds}, {max_odds}]"
+            if self.verbose_filters:
+                self.logger.info(msg)
+            else:
+                self.logger.debug(msg)
             return False
         if spread_percent > max_spread:
-            self.logger.debug(
-                f"Rejected {token_id[:8]}: spread={spread_percent:.1f}% > {max_spread}"
-            )
+            msg = f"Rejected {token_id[:8]}: spread={spread_percent:.1f}% > {max_spread}"
+            if self.verbose_filters:
+                self.logger.info(msg)
+            else:
+                self.logger.debug(msg)
             return False
         return True
 

@@ -488,6 +488,7 @@ def _calculate_available_capital(config, position_manager, client, logger) -> fl
 def run_loop():
     parser = argparse.ArgumentParser(description="Polymarket Autonomous Bot")
     parser.add_argument("--once", action="store_true", help="Run a single loop")
+    parser.add_argument("--verbose-filters", action="store_true", help="Log detailed rejection reasons")
     args = parser.parse_args()
 
     config = load_bot_config()
@@ -497,6 +498,8 @@ def run_loop():
     position_manager = PositionManager()
     strategy = TradingStrategy(config)
     scanner = MarketScanner(client, config, logger, position_manager, strategy)
+    if args.verbose_filters:
+        scanner.verbose_filters = True
     trader = BotTrader(client, config, logger)
 
     scan_interval = config.get("bot.loop_interval_seconds", 120)
@@ -562,6 +565,7 @@ async def run_loop_async():
 
     parser = argparse.ArgumentParser(description="Polymarket Autonomous Bot (WebSocket)")
     parser.add_argument("--once", action="store_true", help="Run a single loop")
+    parser.add_argument("--verbose-filters", action="store_true", help="Log detailed rejection reasons")
     args = parser.parse_args()
 
     config = load_bot_config()
@@ -571,6 +575,8 @@ async def run_loop_async():
     position_manager = PositionManager()
     strategy = TradingStrategy(config)
     scanner = MarketScanner(client, config, logger, position_manager, strategy)
+    if args.verbose_filters:
+        scanner.verbose_filters = True
     trader = BotTrader(client, config, logger)
 
     scan_interval = config.get("bot.loop_interval_seconds", 120)
