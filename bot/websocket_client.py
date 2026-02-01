@@ -248,7 +248,7 @@ class PolymarketWebSocket:
 
     async def _process_message_dict(self, data: dict):
         """Process a single message dictionary."""
-        msg_type = data.get("type")
+        msg_type = data.get("type") or data.get("event_type")
 
         if msg_type == "book":
             # Orderbook update
