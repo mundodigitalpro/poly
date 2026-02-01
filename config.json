@@ -67,6 +67,44 @@
     "duration_days": 3,
     "max_attempts": 2
   },
+  "whale_copy_trading": {
+    "enabled": false,
+    "mode": "hybrid",
+    "profiler": {
+      "update_interval_seconds": 900,
+      "min_whale_size": 500,
+      "min_score_to_whitelist": 60,
+      "max_whitelisted_whales": 20,
+      "leaderboard_lookback_trades": 500
+    },
+    "monitor": {
+      "poll_interval_seconds": 30,
+      "max_trade_age_minutes": 10,
+      "require_consensus": false,
+      "min_consensus_whales": 3
+    },
+    "copy_rules": {
+      "enabled_sides": ["BUY"],
+      "min_whale_trade_size": 500,
+      "max_whale_trade_size": 50000,
+      "copy_position_size": 0.50,
+      "max_copies_per_day": 10,
+      "apply_market_filters": true,
+      "require_whale_score_above": 70,
+      "blacklist_wallets": []
+    },
+    "risk_management": {
+      "max_copy_allocation": 5.0,
+      "diversification_min_markets": 3,
+      "stop_if_daily_loss": 2.0,
+      "exit_strategy": "hybrid"
+    },
+    "alerts": {
+      "telegram_on_whale_trade": true,
+      "telegram_on_copy_executed": true,
+      "log_level": "INFO"
+    }
+  },
   "bot": {
     "loop_interval_seconds": 120,
     "position_check_interval_seconds": 10,
