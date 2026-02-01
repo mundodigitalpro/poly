@@ -13,15 +13,15 @@
     "min_sell_price_ratio": 0.5
   },
   "market_filters": {
-    "min_odds": 0.45,
-    "max_odds": 0.60,
+    "min_odds": 0.30,
+    "max_odds": 0.70,
     "max_spread_percent": 5.0,
     "min_volume_usd": 100.0,
     "min_volume_24h": 500,
     "min_liquidity": 1000,
     "min_days_to_resolve": 2,
     "max_days_to_resolve": 30,
-    "max_markets": 200,
+    "max_markets": 500,
     "source": "sampling_simplified",
     "allow_missing_resolution_date": true,
     "max_market_detail_fetch": 0,
