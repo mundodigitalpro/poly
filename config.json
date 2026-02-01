@@ -69,7 +69,7 @@
     "max_attempts": 2
   },
   "whale_copy_trading": {
-    "enabled": false,
+    "enabled": true,
     "mode": "hybrid",
     "tracked_wallets": {
       "enabled": false,
