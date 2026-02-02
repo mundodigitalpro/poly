@@ -5,9 +5,12 @@ venv/
 __pycache__/
 *.pyc
 
-# IDE
+
+# IDE / Tools
 .vscode/
 .idea/
+.claude/
+.pytest_cache/
 
 # OS
 .DS_Store
