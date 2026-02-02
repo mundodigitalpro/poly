@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.15.4] - 2026-02-03 (Night)
+### Fixed - Docker Deployment
+- **Telegram Command Bot**: Made opt-in via `TELEGRAM_COMMAND_BOT=true` environment variable.
+  - Prevents HTTP 409 conflicts between command bot and main_bot's notification system.
+  - Only starts when explicitly enabled in `.env` file.
+  - Main bot notifications continue to work independently with `TELEGRAM_BOT_TOKEN`.
+
+### Documentation
+- **Strategy Analysis 2026**: Comprehensive review of current trading strategy.
+  - `docs/strategy_analysis_2026.md`: Identifies critical issues (odds range inconsistency, poor R:R ratio).
+  - Documents strengths and weaknesses with actionable recommendations.
+- **Strategy Improvement Plan**: Detailed 8-week implementation roadmap.
+  - `docs/strategy_improvement_plan.md`: 7 prioritized tasks with acceptance criteria.
+  - KPIs for tracking progress and measurable outcomes.
+
 ## [0.15.3] - 2026-02-02 (Evening)
 ### Added - Testing Infrastructure & Automation
 - **scripts/run_readonly_tests.sh**: New automated wrapper for read-only diagnostics and reporting.
