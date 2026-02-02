@@ -129,5 +129,11 @@
     "max_calls_per_minute": 300,
     "retry_attempts": 3,
     "retry_backoff_seconds": 5
+  },
+  "trading": {
+    "use_concurrent_orders": false,
+    "use_websocket": false,
+    "order_check_interval_seconds": 10,
+    "cancel_timeout_seconds": 30
   }
 }

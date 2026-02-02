@@ -38,10 +38,10 @@ poly/
 - **Credentials**: Managed via `.env` (never commit!). Generate with `python scripts/generate_user_api_keys.py`.
 
 ## Current State (as of 2026-02-02)
-- **Version**: 0.15.2 (Telegram UX & Position Context)
-- **Latest Change**: Telegram `/positions` shows market names + live bid/PnL; `/balance` normalized; positions now persist `question`; main bot logs include market names.
-- **Bot Status**: Unknown (verify with `bash scripts/status_bot.sh`)
-- **Tests**: 35+ passing
+- **Version**: 0.15.3 (Testing Infrastructure)
+- **Latest Change**: Added `scripts/run_readonly_tests.sh` for automated diagnostics; fixed missing `trading` section in `config.json`; updated test plan with recommendations.
+- **Bot Status**: Telegram bot RUNNING; Main bot STOPPED.
+- **Tests**: 40+ passing (including new concurrent orders unit tests)
 - **Active Proposals**: `docs/ESTRATEGIAS_VIABLES_2026.md`
 
 ### Phase History
@@ -59,6 +59,7 @@ python scripts/generate_user_api_keys.py   # Fix 401 errors
 python scripts/verify_wallet.py            # Verify wallet
 python tools/whale_tracker.py              # Whale tracking
 python tools/analyze_positions.py          # Position analysis
+bash scripts/run_readonly_tests.sh    # Full diagnostic report
 bash scripts/start_telegram_bot.sh         # Telegram bot (venv-aware)
 python -m pytest                           # Run tests
 ```

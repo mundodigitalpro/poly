@@ -2,7 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
-## [0.15.2] - 2026-02-02 (Afternoon)
+## [0.15.3] - 2026-02-02 (Evening)
+### Added - Testing Infrastructure & Automation
+- **scripts/run_readonly_tests.sh**: New automated wrapper for read-only diagnostics and reporting.
+- **Reporting System**: Standardized test report format in `docs/reports/`.
+- **docs/TOOLS_SCRIPTS_TEST_PLAN.md**: Updated with recommendations and automated run instructions.
+
+### Fixed - Configuration & Stability
+- **config.json**: Added missing `trading` section required for concurrent order unit tests.
+- **Unit Tests**: Restored 100% pass rate for `tests/test_concurrent_orders.py`.
+
+### Documentation
+- Created `docs/reports/test_run_complete_2026-02-02.md` with comprehensive results.
+
 ### Added - Telegram UX & Position Context
 - **Positions metadata**: Store market question in `positions.json` and reuse it in Telegram.
 - **Market name resolution**: Telegram `/positions` resolves market names via Gamma/CLOB and caches them in `data/market_cache.json`.
