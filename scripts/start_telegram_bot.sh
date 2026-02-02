@@ -10,6 +10,17 @@ echo ""
 
 cd /home/josejordan/poly
 
+# 0. Detectar Python del venv si existe
+if [ -n "$VIRTUAL_ENV" ] && [ -x "$VIRTUAL_ENV/bin/python" ]; then
+    PYTHON_BIN="$VIRTUAL_ENV/bin/python"
+elif [ -x "venv/bin/python" ]; then
+    PYTHON_BIN="venv/bin/python"
+elif [ -x ".venv/bin/python" ]; then
+    PYTHON_BIN=".venv/bin/python"
+else
+    PYTHON_BIN="python3"
+fi
+
 # 1. Verificar si ya está corriendo
 TELEGRAM_PID=$(pgrep -f "python.*telegram_bot.py" || true)
 
@@ -67,11 +78,11 @@ echo ""
 
 # 3. Verificar dependencias
 echo "🔍 Verificando dependencias..."
-if python3 -c "from dotenv import load_dotenv" 2>/dev/null; then
-    echo "✓ python-dotenv instalado"
+if "$PYTHON_BIN" -c "from dotenv import load_dotenv; import py_clob_client" 2>/dev/null; then
+    echo "✓ Dependencias OK"
 else
-    echo "⚠️  Instalando python-dotenv..."
-    pip install -q python-dotenv
+    echo "⚠️  Instalando dependencias (requirements.txt)..."
+    "$PYTHON_BIN" -m pip install -q -r requirements.txt
 fi
 echo ""
 
@@ -104,7 +115,7 @@ echo ""
 
 if [[ $REPLY =~ ^[Yy]$ ]]; then
     # Iniciar en background
-    nohup python tools/telegram_bot.py > logs/telegram_bot.log 2>&1 &
+    nohup "$PYTHON_BIN" tools/telegram_bot.py > logs/telegram_bot.log 2>&1 &
     TELEGRAM_PID=$!
 
     sleep 2
@@ -127,5 +138,5 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
     fi
 else
     # Iniciar en foreground
-    python tools/telegram_bot.py
+    "$PYTHON_BIN" tools/telegram_bot.py
 fi

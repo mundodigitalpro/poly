@@ -28,6 +28,7 @@ class Position:
         sl: float,
         fees_paid: float = 0.0,
         order_id: Optional[str] = None,
+        question: Optional[str] = None,
         # New fields for concurrent order management
         tp_order_id: Optional[str] = None,
         sl_order_id: Optional[str] = None,
@@ -42,6 +43,7 @@ class Position:
         self.sl = sl
         self.fees_paid = fees_paid
         self.order_id = order_id
+        self.question = question
         # Concurrent order fields
         self.tp_order_id = tp_order_id
         self.sl_order_id = sl_order_id
@@ -58,6 +60,7 @@ class Position:
             "sl": self.sl,
             "fees_paid": self.fees_paid,
             "order_id": self.order_id,
+            "question": self.question,
             # Concurrent order fields
             "tp_order_id": self.tp_order_id,
             "sl_order_id": self.sl_order_id,
@@ -77,6 +80,7 @@ class Position:
             sl=data["sl"],
             fees_paid=data.get("fees_paid", 0.0),
             order_id=data.get("order_id"),
+            question=data.get("question"),
             # Concurrent order fields (with backwards compatibility)
             tp_order_id=data.get("tp_order_id"),
             sl_order_id=data.get("sl_order_id"),

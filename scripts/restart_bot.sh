@@ -43,6 +43,39 @@ else
     fi
 fi
 
+# 2. Detener bots de Telegram para evitar duplicados
+echo ""
+echo "🔍 Buscando procesos del bot de Telegram..."
+TELEGRAM_PIDS=$(pgrep -f "python.*telegram_bot.py" || true)
+
+if [ -z "$TELEGRAM_PIDS" ]; then
+    echo "ℹ️  No se encontró ningún bot de Telegram en ejecución"
+else
+    echo "✓ Bot(s) de Telegram encontrados (PID: $TELEGRAM_PIDS)"
+    echo ""
+    echo "🛑 Deteniendo bot(s) de Telegram..."
+    for PID in $TELEGRAM_PIDS; do
+        kill -SIGINT $PID || kill -SIGTERM $PID || true
+    done
+
+    # Esperar a que se detengan (max 10 segundos)
+    for i in {1..10}; do
+        if ! pgrep -f "python.*telegram_bot.py" > /dev/null; then
+            echo "✓ Bot(s) de Telegram detenido(s) correctamente"
+            break
+        fi
+        echo "   Esperando... ($i/10)"
+        sleep 1
+    done
+
+    # Forzar si no se detuvieron
+    if pgrep -f "python.*telegram_bot.py" > /dev/null; then
+        echo "⚠️  Forzando detención..."
+        pkill -9 -f "python.*telegram_bot.py" || true
+        sleep 1
+    fi
+fi
+
 # 3. Pull últimos cambios
 echo ""
 echo "📥 Descargando últimos cambios..."

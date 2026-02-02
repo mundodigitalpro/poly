@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.15.2] - 2026-02-02 (Afternoon)
+### Added - Telegram UX & Position Context
+- **Positions metadata**: Store market question in `positions.json` and reuse it in Telegram.
+- **Market name resolution**: Telegram `/positions` resolves market names via Gamma/CLOB and caches them in `data/market_cache.json`.
+
+### Changed - Bot Logging & Telegram Commands
+- **main_bot logs**: Position open/close/TP/SL logs now include market name + token short ID.
+- **/positions**: Shows entry price, current best bid, per-position PnL, and total PnL summary.
+- **/balance**: Shows raw balance/allowance plus normalized USDC with unit heuristic.
+
+### Fixed - Telegram Startup
+- **restart_bot.sh**: Stops existing Telegram bot instances to prevent duplicates.
+- **start_telegram_bot.sh**: Uses venv Python if available and installs `requirements.txt` when deps are missing.
+
 ## [0.15.1] - 2026-02-02 (Morning)
 ### Changed - Optimization Phase 🚀
 - **Config**: Optimized odds range to `0.60 - 0.80` (was 0.30-0.70) based on dry run analysis.

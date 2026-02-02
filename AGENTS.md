@@ -40,6 +40,8 @@ The project is organized into logical directories:
   - `python tools/find_whale_wallet.py` (whale discovery)
   - `python tools/whale_tracker.py` (whale tracking)
   - `python tools/analyze_positions.py` (position risk analysis)
+  - `bash scripts/start_telegram_bot.sh` (Telegram bot; auto-uses venv + installs deps if missing)
+  - `bash scripts/restart_bot.sh` (restarts main bot and stops any duplicate Telegram bots)
 - Docker: `docker-compose up --build -d` and `docker-compose logs -f`.
 
 ## Coding Style & Naming Conventions

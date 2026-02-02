@@ -37,10 +37,10 @@ poly/
 - **EOA (MetaMask)**: Uses `signature_type=0`. Requires only `POLY_PRIVATE_KEY`.
 - **Credentials**: Managed via `.env` (never commit!). Generate with `python scripts/generate_user_api_keys.py`.
 
-## Current State (as of 2026-02-01)
-- **Version**: 0.15.1 (Optimization Phase)
-- **Latest Change**: Optimized market filters (odds 0.60-0.80) based on dry run data.
-- **Bot Status**: STOPPED (Ready to restart with optimized settings)
+## Current State (as of 2026-02-02)
+- **Version**: 0.15.2 (Telegram UX & Position Context)
+- **Latest Change**: Telegram `/positions` shows market names + live bid/PnL; `/balance` normalized; positions now persist `question`; main bot logs include market names.
+- **Bot Status**: Unknown (verify with `bash scripts/status_bot.sh`)
 - **Tests**: 35+ passing
 - **Active Proposals**: `docs/ESTRATEGIAS_VIABLES_2026.md`
 
@@ -59,6 +59,7 @@ python scripts/generate_user_api_keys.py   # Fix 401 errors
 python scripts/verify_wallet.py            # Verify wallet
 python tools/whale_tracker.py              # Whale tracking
 python tools/analyze_positions.py          # Position analysis
+bash scripts/start_telegram_bot.sh         # Telegram bot (venv-aware)
 python -m pytest                           # Run tests
 ```
 

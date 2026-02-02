@@ -70,6 +70,17 @@ kimi -p "Review this function" --print -y
 
 Polymarket trading client and autonomous bot written in Python. The project enables trading on Polymarket via API using the `py-clob-client` library, supporting both Magic Link (email/Gmail) and MetaMask authentication methods.
 
+## Recent Implementation Notes (2026-02-02)
+- **Position metadata**: `Position` now stores `question` and persists it to `data/positions.json` (see `bot/position_manager.py`).
+- **Logging context**: `main_bot.py` uses `_format_label()` to include market names in open/close/TP/SL logs.
+- **Telegram bot**:
+  - `/positions` shows market names, entry price, current best bid, and PnL.
+  - Market names are resolved via orderbook `condition_id` → Gamma `/markets?condition_id=...` → CLOB `get_market` fallback; cached in `data/market_cache.json`.
+  - `/balance` shows raw + normalized USDC with unit heuristic.
+- **Ops scripts**:
+  - `scripts/start_telegram_bot.sh` uses venv Python if present and installs `requirements.txt` when deps are missing.
+  - `scripts/restart_bot.sh` stops any running Telegram bots before restart to avoid duplicates.
+
 ## Core Architecture
 
 ### Authentication Flow

@@ -65,6 +65,16 @@ def _extract_best_ask(orders, default: float = 0.0) -> float:
     return min(prices) if prices else default
 
 
+def _format_label(token_id: str, question: Optional[str]) -> str:
+    short = f"{token_id[:8]}..."
+    if question:
+        q = question.strip()
+        if len(q) > 80:
+            q = q[:77] + "..."
+        return f"{q} ({short})"
+    return short
+
+
 def _derive_funder(private_key: str) -> Optional[str]:
     """Derive wallet address from private key for EOA usage."""
     try:
@@ -177,7 +187,7 @@ def _update_position_with_limit_orders(
     # TP filled
     if tp_status['status'] in ('filled', 'partial'):
         logger.info(
-            f"TAKE PROFIT filled for {position.token_id[:8]}... "
+            f"TAKE PROFIT filled for {_format_label(position.token_id, position.question)} "
             f"@ {tp_status['avg_price']:.4f}"
         )
 
@@ -199,7 +209,7 @@ def _update_position_with_limit_orders(
 
         position_manager.remove_position(position.token_id)
         logger.info(
-            f"Position closed (TP) {position.token_id[:8]}... "
+            f"Position closed (TP) {_format_label(position.token_id, position.question)} "
             f"size={tp_status['filled_size']} @ {tp_status['avg_price']:.4f}"
         )
         return
@@ -207,7 +217,7 @@ def _update_position_with_limit_orders(
     # SL filled
     if sl_status['status'] in ('filled', 'partial'):
         logger.info(
-            f"STOP LOSS filled for {position.token_id[:8]}... "
+            f"STOP LOSS filled for {_format_label(position.token_id, position.question)} "
             f"@ {sl_status['avg_price']:.4f}"
         )
 
@@ -236,14 +246,14 @@ def _update_position_with_limit_orders(
 
         position_manager.remove_position(position.token_id)
         logger.info(
-            f"Position closed (SL) {position.token_id[:8]}... "
+            f"Position closed (SL) {_format_label(position.token_id, position.question)} "
             f"size={sl_status['filled_size']} @ {sl_status['avg_price']:.4f}"
         )
         return
 
     # Both orders still open (normal case)
     logger.debug(
-        f"Position {position.token_id[:8]}... "
+        f"Position {_format_label(position.token_id, position.question)} "
         f"TP={tp_status['status']} SL={sl_status['status']}"
     )
 
@@ -262,11 +272,15 @@ def _update_position_legacy_monitoring(
         book = client.get_order_book(position.token_id)
         best_bid, best_ask = _best_bid_ask(book)
     except Exception as exc:
-        logger.warn(f"Orderbook error for {position.token_id[:8]}...: {exc}")
+        logger.warn(
+            f"Orderbook error for {_format_label(position.token_id, position.question)}: {exc}"
+        )
         return
 
     if best_bid <= 0:
-        logger.warn(f"No bids for {position.token_id[:8]}..., skipping.")
+        logger.warn(
+            f"No bids for {_format_label(position.token_id, position.question)}, skipping."
+        )
         return
 
     action = None
@@ -277,13 +291,13 @@ def _update_position_legacy_monitoring(
 
     if not action:
         logger.info(
-            f"Position {position.token_id[:8]}... price={best_bid:.4f} "
+            f"Position {_format_label(position.token_id, position.question)} price={best_bid:.4f} "
             f"tp={position.tp:.4f} sl={position.sl:.4f}"
         )
         return
 
     logger.info(
-        f"{action.upper()} for {position.token_id[:8]}... "
+        f"{action.upper()} for {_format_label(position.token_id, position.question)} "
         f"bid={best_bid:.4f}"
     )
 
@@ -296,7 +310,9 @@ def _update_position_legacy_monitoring(
             is_emergency_exit=action == "stop_loss",
         )
     except Exception as exc:
-        logger.error(f"Sell failed for {position.token_id[:8]}...: {exc}")
+        logger.error(
+            f"Sell failed for {_format_label(position.token_id, position.question)}: {exc}"
+        )
         return
 
     exit_time = datetime.now(timezone.utc).isoformat()
@@ -320,7 +336,7 @@ def _update_position_legacy_monitoring(
 
     position_manager.remove_position(position.token_id)
     logger.info(
-        f"Position closed {position.token_id[:8]}... "
+        f"Position closed {_format_label(position.token_id, position.question)} "
         f"size={fill.filled_size} @ {fill.avg_price:.4f}"
     )
 
@@ -420,6 +436,7 @@ def _place_new_trade(
             sl=sl,
             fees_paid=fill.fees_paid,
             order_id=fill.order_id,
+            question=candidate.get("question"),
             # Concurrent order fields
             tp_order_id=result['tp_order_id'],
             sl_order_id=result['sl_order_id'],
@@ -432,11 +449,13 @@ def _place_new_trade(
             logger.info(
                 f"Position opened with limit orders: "
                 f"size={fill.filled_size} @ {fill.avg_price:.4f} "
-                f"TP={result['tp_order_id'][:8]}... SL={result['sl_order_id'][:8]}..."
+                f"TP={result['tp_order_id'][:8]}... SL={result['sl_order_id'][:8]}... "
+                f"market={_format_label(candidate['token_id'], candidate.get('question'))}"
             )
         else:
             logger.warn(
-                f"Limit orders failed, using legacy monitoring for {candidate['token_id'][:8]}..."
+                f"Limit orders failed, using legacy monitoring for "
+                f"{_format_label(candidate['token_id'], candidate.get('question'))}"
             )
     else:
         logger.info(
@@ -462,11 +481,12 @@ def _place_new_trade(
             sl=sl,
             fees_paid=fill.fees_paid,
             order_id=fill.order_id,
+            question=candidate.get("question"),
             exit_mode="monitor",
         )
         position_manager.add_position(position)
         logger.info(
-            f"Position opened {candidate['token_id'][:8]}... "
+            f"Position opened {_format_label(candidate['token_id'], candidate.get('question'))} "
             f"size={fill.filled_size} @ {fill.avg_price:.4f}"
         )
 
