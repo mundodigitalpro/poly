@@ -27,6 +27,7 @@ data/simulation_results.json
 data/whale_profiles.json
 data/whale_copy_stats.json
 data/whale_copy_positions.json
+data/market_cache.json
 data/archive/
 
 # Backups
