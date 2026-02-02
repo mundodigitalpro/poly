@@ -34,21 +34,23 @@ class TradingStrategy:
         Returns:
             Tuple of (tp_price, sl_price)
         """
-        # Determine odds range
-        if 0.30 <= entry_odds < 0.40:
-            range_key = "0.30-0.40"
-        elif 0.40 <= entry_odds < 0.50:
-            range_key = "0.40-0.50"
-        elif 0.50 <= entry_odds < 0.60:
-            range_key = "0.50-0.60"
-        elif 0.60 <= entry_odds <= 0.70:
-            range_key = "0.60-0.70"
+        # Determine odds range (aligned with config ranges)
+        if 0.35 <= entry_odds < 0.45:
+            range_key = "0.35-0.45"
+        elif 0.45 <= entry_odds < 0.55:
+            range_key = "0.45-0.55"
+        elif 0.55 <= entry_odds < 0.65:
+            range_key = "0.55-0.65"
+        elif 0.65 <= entry_odds < 0.75:
+            range_key = "0.65-0.75"
+        elif 0.75 <= entry_odds <= 0.80:
+            range_key = "0.75-0.80"
         else:
             # Default to middle range if outside expected range
-            range_key = "0.50-0.60"
+            range_key = "0.55-0.65"
 
         # Get TP/SL percentages for this range
-        tp_sl = self.tp_sl_config.get(range_key, {"tp_percent": 15, "sl_percent": 10})
+        tp_sl = self.tp_sl_config.get(range_key, {"tp_percent": 18, "sl_percent": 9})
         tp_percent = tp_sl["tp_percent"] / 100
         sl_percent = tp_sl["sl_percent"] / 100
 
@@ -156,18 +158,20 @@ class TradingStrategy:
             odds: Odds value (0.0-1.0)
 
         Returns:
-            Odds range string (e.g., "0.30-0.40")
+            Odds range string (e.g., "0.35-0.45")
         """
-        if 0.30 <= odds < 0.40:
-            return "0.30-0.40"
-        elif 0.40 <= odds < 0.50:
-            return "0.40-0.50"
-        elif 0.50 <= odds < 0.60:
-            return "0.50-0.60"
-        elif 0.60 <= odds <= 0.70:
-            return "0.60-0.70"
+        if 0.35 <= odds < 0.45:
+            return "0.35-0.45"
+        elif 0.45 <= odds < 0.55:
+            return "0.45-0.55"
+        elif 0.55 <= odds < 0.65:
+            return "0.55-0.65"
+        elif 0.65 <= odds < 0.75:
+            return "0.65-0.75"
+        elif 0.75 <= odds <= 0.80:
+            return "0.75-0.80"
         else:
-            return "0.50-0.60"  # Default
+            return "0.55-0.65"  # Default
 
 
 # Example usage
@@ -178,11 +182,14 @@ if __name__ == "__main__":
     strategy = TradingStrategy(config)
 
     # Test TP/SL calculation
-    print("=== TP/SL Calculation ===")
-    test_odds = [0.35, 0.45, 0.55, 0.65]
+    print("=== TP/SL Calculation (new 2:1 ratio) ===")
+    test_odds = [0.40, 0.50, 0.60, 0.70, 0.77]
     for odds in test_odds:
         tp, sl = strategy.calculate_tp_sl(odds)
-        print(f"Odds: {odds:.2f} → TP: {tp:.2f}, SL: {sl:.2f}")
+        range_key = strategy.get_odds_range(odds)
+        tp_pct = (tp - odds) / odds * 100
+        sl_pct = (odds - sl) / odds * 100
+        print(f"Odds: {odds:.2f} [{range_key}] → TP: {tp:.3f} (+{tp_pct:.1f}%), SL: {sl:.3f} (-{sl_pct:.1f}%), Ratio: {tp_pct/sl_pct:.2f}:1")
 
     print("\n=== Market Scoring ===")
     # Test market scoring

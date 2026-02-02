@@ -2,6 +2,40 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.16.0] - 2026-02-03 (Night)
+### Changed - Strategy Improvements Phase 1 🎯
+Implementation of critical improvements from `docs/strategy_improvement_plan.md`:
+
+- **IMP-001: Expanded Odds Range**: `0.60-0.80` → `0.35-0.80`
+  - Now utilizes all configured TP/SL ranges
+  - More trading opportunities available
+  - Aligned `bot/strategy.py` ranges with `config.json`
+
+- **IMP-002: Improved Risk/Reward Ratio**: `1.2:1` → `2:1`
+  - New TP/SL configuration by odds range:
+    - 0.35-0.45: TP=28%, SL=14% (Ratio 2:1)
+    - 0.45-0.55: TP=22%, SL=11% (Ratio 2:1)
+    - 0.55-0.65: TP=18%, SL=9% (Ratio 2:1)
+    - 0.65-0.75: TP=14%, SL=7% (Ratio 2:1)
+    - 0.75-0.80: TP=12%, SL=6% (Ratio 2:1)
+  - Breakeven win rate reduced from 48% to 33%
+
+- **IMP-003: Increased Position Size**: `$0.25` → `$1.00`
+  - Capital utilization improved from 27% to 55%
+  - Reduced max positions: 20 → 10 (better focus)
+  - Scale-up target: $2.00 after 20 profitable trades
+
+### Files Modified
+- `config.json`: Updated all strategy parameters
+- `bot/strategy.py`: Aligned odds range detection with new config
+- `tests/test_strategy.py`: Updated tests for new TP/SL values
+
+### Verified
+- ✅ All strategy tests passing
+- ✅ Dry run cycle completed successfully
+- ✅ New candidates found in expanded range (odds=0.49 now accepted)
+- ✅ New position opened with 2:1 ratio (TP=0.8960, SL=0.7520 @ entry 0.80)
+
 ## [0.15.4] - 2026-02-03 (Night)
 ### Fixed - Docker Deployment
 - **Telegram Command Bot**: Made opt-in via `TELEGRAM_COMMAND_BOT=true` environment variable.

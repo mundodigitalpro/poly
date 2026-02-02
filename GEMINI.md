@@ -37,17 +37,24 @@ poly/
 - **EOA (MetaMask)**: Uses `signature_type=0`. Requires only `POLY_PRIVATE_KEY`.
 - **Credentials**: Managed via `.env` (never commit!). Generate with `python scripts/generate_user_api_keys.py`.
 
-## Current State (as of 2026-02-02)
-- **Version**: 0.15.3 (Testing Infrastructure)
-- **Latest Change**: Added `scripts/run_readonly_tests.sh` for automated diagnostics; fixed missing `trading` section in `config.json`; updated test plan with recommendations.
-- **Bot Status**: Telegram bot RUNNING; Main bot STOPPED.
-- **Tests**: 40+ passing (including new concurrent orders unit tests)
-- **Active Proposals**: `docs/ESTRATEGIAS_VIABLES_2026.md`
+## Current State (as of 2026-02-03)
+- **Version**: 0.16.0 (Strategy Improvements Phase 1)
+- **Latest Change**: Implemented IMP-001/002/003 from `docs/strategy_improvement_plan.md`:
+  - Expanded odds range: 0.35-0.80 (was 0.60-0.80)
+  - Improved TP/SL ratio: 2:1 (was 1.2:1) - breakeven now 33% vs 48%
+  - Increased position size: $1.00 (was $0.25), max positions 10 (was 20)
+- **Bot Status**: Ready for overnight dry-run testing with new strategy
+- **Tests**: 60/61 passing (1 pre-existing failure in tracked_wallets)
+- **Active Plan**: `docs/strategy_improvement_plan.md` - Phase 1 complete, Phase 2 next
 
 ### Phase History
 - **Phase 0-2.8**: COMPLETED (Core, Integration, Gamma API, Whale Tracking)
 - **Phase 3**: COMPLETED (Whale Copy Integration & Dry Run Analysis)
-- **Phase 4**: IN PROGRESS (Optimization & Profitability Tuning)
+- **Phase 4**: IN PROGRESS (Strategy Optimization)
+  - ✅ IMP-001: Odds range consistency (DONE)
+  - ✅ IMP-002: TP/SL 2:1 ratio (DONE)
+  - ✅ IMP-003: Position sizing (DONE)
+  - ⏳ IMP-007: 7-day validation (STARTED tonight)
 
 ## Useful Commands
 ```bash
