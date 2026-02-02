@@ -38,15 +38,16 @@ poly/
 - **Credentials**: Managed via `.env` (never commit!). Generate with `python scripts/generate_user_api_keys.py`.
 
 ## Current State (as of 2026-02-01)
-- **Version**: 0.15.0 (Whale Copy Integrated)
-- **Latest Change**: Integrated Whale Copy Engine into `main_bot.py`, added `/whales` command, and Telegram alerts.
-- **Bot Status**: STOPPED (Ready for manual restart with Whale Copy active)
-- **Tests**: 35+ passing (including new VWAP tests)
+- **Version**: 0.15.1 (Optimization Phase)
+- **Latest Change**: Optimized market filters (odds 0.60-0.80) based on dry run data.
+- **Bot Status**: STOPPED (Ready to restart with optimized settings)
+- **Tests**: 35+ passing
 - **Active Proposals**: `docs/ESTRATEGIAS_VIABLES_2026.md`
 
 ### Phase History
 - **Phase 0-2.8**: COMPLETED (Core, Integration, Gamma API, Whale Tracking)
-- **Phase 3**: IN PROGRESS (Whale Copy Integration & Dry Run)
+- **Phase 3**: COMPLETED (Whale Copy Integration & Dry Run Analysis)
+- **Phase 4**: IN PROGRESS (Optimization & Profitability Tuning)
 
 ## Useful Commands
 ```bash

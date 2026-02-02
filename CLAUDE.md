@@ -559,6 +559,39 @@ bash scripts/stop_bot.sh
 
 ---
 
+### 2026-02-01: Critical Filter Optimization (v0.15.1)
+
+**Problem**: Dry run analysis (14h, 31 trades) revealed the 0.40-0.60 odds range had low win rate (<25%) and negative PnL, while 0.60-0.70 showed 66% win rate and positive PnL.
+
+**Solution**: Tightened `market_filters` in `config.json` to focus on high-probability setups.
+- **Old**: `min_odds: 0.30`, `max_odds: 0.70`
+- **New**: `min_odds: 0.60`, `max_odds: 0.80`
+
+**Validation**: Based on 14-hour dry run data (31 trades). This shifts the strategy from "uncertainty farming" to "high-confidence harvesting".
+
+### 2026-02-01: Whale Copy Trading System (v0.15.0)
+
+**Goal**: Automatically replicate trades from profitable "whales" to diversify strategy.
+
+**Architecture**:
+- **Profiler (`bot/whale_profiler.py`)**: Ranks traders by volume (proxy for profitability). Top 20 are whitelisted.
+- **Monitor (`bot/whale_monitor.py`)**: Polls `data-api.polymarket.com/trades` every 30s. Detects signals.
+- **Engine (`bot/whale_copy_engine.py`)**: Validates signals against 11-step risk checklist (daily limits, diversification, etc.) before execution.
+- **Hybrid Mode**: Runs in parallel with the main `market_scanner.py` loop.
+
+**Key Components**:
+1. **Volume-Weighted Ranking**: We assume high-volume traders (> $1M) are profitable survivors.
+2. **Consensus Detection**: Can require N whales to trade same side before copying (optional).
+3. **Risk Management**:
+   - `max_copy_allocation`: $5.00 total risk cap
+   - `daily_loss_limit`: $2.00 stop loss
+   - `copy_position_size`: Fixed $0.50 per copy
+
+**Integration**:
+- Loaded in `main_bot.py` via `_run_whale_cycle()`.
+- Alerts via `tools/telegram_alerts.py`.
+- Status via `/whales` command.
+
 ## Security Considerations
 
 - Never commit `.env` file (already in `.gitignore`)

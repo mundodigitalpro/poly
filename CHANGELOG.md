@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.15.1] - 2026-02-02 (Morning)
+### Changed - Optimization Phase 🚀
+- **Config**: Optimized odds range to `0.60 - 0.80` (was 0.30-0.70) based on dry run analysis.
+  - Removes unprofitable mid-range (0.40-0.60).
+  - Focuses on high-probability setups (66% win rate observed in dry run).
+
 ## [0.15.0] - 2026-02-01 (Evening)
 ### Added - Whale Copy Trading System 🐋
 - **Core Infrastructure (Phase 1)**: Complete whale copy trading system with volume-weighted ranking and real-time signal detection.

@@ -37,6 +37,7 @@ The project is organized into logical directories:
   - `python auto_sell.py` (auto-sell bot; review config)
   - `python scripts/verify_wallet.py` and `python scripts/diagnose_config.py` (config checks)
   - `python scripts/test_all_sig_types.py` (auth matrix test)
+  - `python tools/find_whale_wallet.py` (whale discovery)
   - `python tools/whale_tracker.py` (whale tracking)
   - `python tools/analyze_positions.py` (position risk analysis)
 - Docker: `docker-compose up --build -d` and `docker-compose logs -f`.

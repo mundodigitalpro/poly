@@ -13,8 +13,8 @@
     "min_sell_price_ratio": 0.5
   },
   "market_filters": {
-    "min_odds": 0.30,
-    "max_odds": 0.70,
+    "min_odds": 0.60,
+    "max_odds": 0.80,
     "max_spread_percent": 5.0,
     "min_volume_usd": 100.0,
     "min_volume_24h": 500,
