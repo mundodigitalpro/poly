@@ -2,23 +2,12 @@
 #
 # Multi-Agent Interactive Chat
 #
-# Permite conversaciones interactivas entre Kimi, Gemini, Claude y el usuario.
-# Los agentes pueden interactuar entre sí y preguntar al usuario.
+# Permite conversaciones interactivas entre Kimi, Gemini, Claude, Codex y el usuario.
+# Los agentes tienen acceso al contexto actual del proyecto leyendo GEMINI.md.
 #
 # Uso:
-#   ./scripts/agent_chat.sh "Instrucción inicial para los agentes"
-#   ./scripts/agent_chat.sh  # Modo interactivo sin instrucción inicial
-#
-# Comandos durante la sesión:
-#   /kimi <mensaje>   - Enviar mensaje directamente a Kimi
-#   /gemini <mensaje> - Enviar mensaje directamente a Gemini
-#   /claude <mensaje> - Enviar mensaje directamente a Claude
-#   /both <mensaje>   - Enviar mensaje a Kimi y Gemini
-#   /all <mensaje>    - Enviar mensaje a todos los agentes
-#   /switch           - Cambiar el agente activo
-#   /status           - Ver estado de la conversación
-#   /help             - Mostrar ayuda
-#   /quit o /exit     - Salir
+#   ./scripts/agent_chat.sh "Instrucción inicial"
+#   ./scripts/agent_chat.sh  # Modo interactivo
 #
 
 set -euo pipefail
@@ -37,17 +26,101 @@ NC='\033[0m'
 # Configuración
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-HISTORY_FILE="/tmp/agent_chat_history_$$.txt"
+LOG_DIR="$PROJECT_ROOT/logs"
+SESSION_MARKER="$LOG_DIR/agent_chat_last.txt"
+HISTORY_FILE=""
+PREV_HISTORY_FILE=""
+CONTEXT_FILE="$PROJECT_ROOT/GEMINI.md"
+CONTEXT_LINES="${CONTEXT_LINES:-50}"
 CLAUDE_CONFIG="/home/josejordan/.claude"
 TURN_COUNT=0
 ACTIVE_AGENT="kimi"
+KIMI_TIMEOUT="${KIMI_TIMEOUT:-25}"
+GEMINI_TIMEOUT="${GEMINI_TIMEOUT:-25}"
+CLAUDE_TIMEOUT="${CLAUDE_TIMEOUT:-30}"
+CODEX_TIMEOUT="${CODEX_TIMEOUT:-45}"
+RUN_CMD_EXIT=0
+
+mkdir -p "$LOG_DIR"
+
+# Inicializar historial
+init_history_files() {
+    if [ -f "$SESSION_MARKER" ]; then
+        PREV_HISTORY_FILE="$(cat "$SESSION_MARKER")"
+    fi
+    HISTORY_FILE="$LOG_DIR/chat_history_$(date +%Y%m%d_%H%M%S).txt"
+    echo "$HISTORY_FILE" > "$SESSION_MARKER"
+    touch "$HISTORY_FILE"
+}
+
+# Reanudar historial previo o específico
+resume_history() {
+    local target="${1:-}"
+    if [ -n "$target" ]; then
+        if [ -f "$target" ]; then
+            HISTORY_FILE="$target"
+            echo "$HISTORY_FILE" > "$SESSION_MARKER"
+            echo -e "${GREEN}Reanudado: $HISTORY_FILE${NC}"
+            return 0
+        fi
+        echo -e "${RED}No existe: $target${NC}"
+        return 1
+    fi
+    if [ -n "${PREV_HISTORY_FILE:-}" ] && [ -f "$PREV_HISTORY_FILE" ]; then
+        HISTORY_FILE="$PREV_HISTORY_FILE"
+        echo "$HISTORY_FILE" > "$SESSION_MARKER"
+        echo -e "${GREEN}Reanudado: $HISTORY_FILE${NC}"
+        return 0
+    fi
+    echo -e "${RED}No hay sesión previa para reanudar.${NC}"
+    return 1
+}
+
+# Escribir historial con lock si es posible
+write_history() {
+    local line="$1"
+    if command -v flock >/dev/null 2>&1; then
+        (
+            flock -x 200
+            echo "$line" >> "$HISTORY_FILE"
+        ) 200>/tmp/.agent_chat_lock
+    else
+        echo "$line" >> "$HISTORY_FILE"
+    fi
+}
+
+# Ejecutar comandos con timeout si existe
+run_cmd_capture() {
+    local timeout_s="$1"
+    shift
+    local out
+    local code
+    if command -v timeout >/dev/null 2>&1; then
+        out=$(timeout "${timeout_s}s" "$@" 2>&1)
+        code=$?
+    else
+        out=$("$@" 2>&1)
+        code=$?
+    fi
+    RUN_CMD_EXIT=$code
+    printf '%s' "$out"
+    return 0
+}
 
 # Limpiar al salir
 cleanup() {
-    rm -f "$HISTORY_FILE" 2>/dev/null || true
-    echo -e "\n${YELLOW}Sesión finalizada.${NC}"
+    echo -e "\n${YELLOW}Sesión finalizada. Historial guardado en: $HISTORY_FILE${NC}"
 }
 trap cleanup EXIT
+
+# Cargar contexto dinámico desde GEMINI.md (Primeras 50 líneas para resumen)
+get_project_context() {
+    if [ -f "$CONTEXT_FILE" ]; then
+        head -n "$CONTEXT_LINES" "$CONTEXT_FILE"
+    else
+        echo "Contexto no disponible."
+    fi
+}
 
 # Mostrar banner
 show_banner() {
@@ -55,6 +128,7 @@ show_banner() {
     echo -e "${CYAN}║${NC}        ${WHITE}Multi-Agent Interactive Chat${NC}                        ${CYAN}║${NC}"
     echo -e "${CYAN}║${NC}     ${MAGENTA}Kimi${NC} 🤖 ${BLUE}Gemini${NC} 💎 ${ORANGE}Claude${NC} 🧠 ${RED}Codex${NC} 📝 + ${GREEN}Tú${NC} 👤          ${CYAN}║${NC}"
     echo -e "${CYAN}╚════════════════════════════════════════════════════════════╝${NC}"
+    echo -e "${WHITE}Historial: $HISTORY_FILE${NC}"
     echo ""
 }
 
@@ -68,173 +142,137 @@ show_help() {
     echo -e "  ${YELLOW}/both${NC} <msg>   Enviar a Kimi y Gemini"
     echo -e "  ${CYAN}/all${NC} <msg>    Enviar a todos los agentes"
     echo -e "  ${CYAN}/switch${NC}       Cambiar agente activo (actual: $ACTIVE_AGENT)"
-    echo -e "  ${WHITE}/status${NC}       Ver estado de la conversación"
-    echo -e "  ${WHITE}/help${NC}         Mostrar esta ayuda"
+    echo -e "  ${CYAN}/resume${NC} [path] Reanudar sesión previa o específica"
+    echo -e "  ${CYAN}/context${NC} [edit] Ver o editar contexto"
+    echo -e "  ${WHITE}/status${NC}       Ver estado"
     echo -e "  ${RED}/quit${NC}         Salir"
-    echo ""
-    echo -e "  ${WHITE}Escribe directamente${NC} para hablar con el agente activo (${YELLOW}$ACTIVE_AGENT${NC})"
     echo ""
 }
 
-# Obtener historial reciente
+# Obtener historial reciente para el prompt
 get_history() {
     if [ -f "$HISTORY_FILE" ]; then
-        tail -10 "$HISTORY_FILE" | sed 's/^/  /'
+        tail -15 "$HISTORY_FILE" | sed 's/^/  /'
     else
         echo "  (sin historial previo)"
     fi
 }
 
-# Enviar mensaje a Kimi
-ask_kimi() {
-    local prompt="$1"
+# Wrapper genérico para llamar agentes
+call_agent_generic() {
+    local agent_name="$1"
+    local prompt="$2"
+    local color="$3"
+    local icon="$4"
+    local cmd_func="$5"
+
     local history
     history=$(get_history)
-    
-    local context="Eres Kimi en un chat multiagente con Gemini, Claude, Codex y un humano.
-Proyecto: trading bot Polymarket en /home/josejordan/poly.
-Responde MUY conciso (2-3 frases max). Si necesitas info del humano, pregunta.
+    local project_context
+    project_context=$(get_project_context)
 
-HISTORIAL DE LA CONVERSACIÓN:
+    local full_context="Eres $agent_name en un chat multiagente con otros IAs y un humano.
+Proyecto: Trading Bot Polymarket (/home/josejordan/poly).
+Responde MUY conciso (2-3 frases max). Si necesitas info, pregunta.
+
+CONTEXTO ACTUAL DEL PROYECTO:
+$project_context
+
+HISTORIAL RECIENTE:
 $history
 
 NUEVO MENSAJE:"
-    
-    echo -e "${MAGENTA}🤖 Kimi pensando...${NC}" >&2
-    
-    local raw_output
-    raw_output=$(kimi -p "$context
 
-$prompt" --print 2>&1) || true
+    echo -e "${color}${icon} $agent_name pensando...${NC}" >&2
     
-    # Extraer texto de la respuesta de Kimi (formato TextPart)
+    # Ejecutar la función específica del agente
     local response
-    response=$(echo "$raw_output" | grep -oP "text='[^']*" | head -1 | sed "s/text='//" | tr -d '\n')
+    response=$($cmd_func "$full_context" "$prompt")
     
-    if [ -z "$response" ]; then
-        response="[Sin respuesta de Kimi]"
+    if [ -z "$response" ] || [ "$response" == "null" ]; then
+        response="[Sin respuesta de $agent_name]"
     fi
     
-    echo -e "${MAGENTA}🤖 Kimi:${NC} $response" >&2
-    echo "[Kimi] $response" >> "$HISTORY_FILE"
+    echo -e "${color}${icon} $agent_name:${NC} $response" >&2
+    write_history "[$agent_name] $response"
     
     echo "$response"
 }
 
-# Enviar mensaje a Gemini
-ask_gemini() {
-    local prompt="$1"
-    local history
-    history=$(get_history)
-    
-    local context="Eres Gemini en un chat multiagente con Kimi, Claude, Codex y un humano.
-Proyecto: trading bot Polymarket en /home/josejordan/poly.
-Responde MUY conciso (2-3 frases max). Si necesitas info del humano, pregunta.
+# Funciones específicas de ejecución
+exec_kimi() {
+    local ctx="$1"
+    local prmt="$2"
+    local out
+    out=$(run_cmd_capture "$KIMI_TIMEOUT" kimi -p "$ctx
 
-HISTORIAL DE LA CONVERSACIÓN:
-$history
-
-NUEVO MENSAJE:"
-    
-    echo -e "${BLUE}💎 Gemini pensando...${NC}" >&2
-    
-    local raw_output
-    raw_output=$(gemini -p "$context
-
-$prompt" -o text -y 2>&1) || true
-    
-    # Filtrar líneas de log y obtener respuesta real
-    local response
-    response=$(echo "$raw_output" | grep -v "^YOLO\|^Loaded\|^Hook\|^I will\|^$" | tail -3 | tr '\n' ' ' | sed 's/  */ /g')
-    
-    if [ -z "$response" ]; then
-        response="[Sin respuesta de Gemini]"
+$prmt" --print)
+    local exit_code=$RUN_CMD_EXIT
+    if [ "$exit_code" -eq 124 ]; then
+        echo "[Timeout Kimi (${KIMI_TIMEOUT}s)]"
+        return
     fi
-    
-    echo -e "${BLUE}💎 Gemini:${NC} $response" >&2
-    echo "[Gemini] $response" >> "$HISTORY_FILE"
-    
-    echo "$response"
+    # Extraer text='...'
+    echo "$out" | grep -oP "text='[^']*" | head -1 | sed "s/text='//" | tr -d '\n'
 }
 
-# Enviar mensaje a Claude
-ask_claude() {
-    local prompt="$1"
-    local history
-    history=$(get_history)
-    
-    local context="Eres Claude en un chat multiagente con Kimi, Gemini, Codex y un humano.
-Configuración: $CLAUDE_CONFIG
-Proyecto: trading bot Polymarket en /home/josejordan/poly.
-Responde MUY conciso (2-3 frases max). Si necesitas info del humano, pregunta.
+exec_gemini() {
+    local ctx="$1"
+    local prmt="$2"
+    local out
+    out=$(run_cmd_capture "$GEMINI_TIMEOUT" gemini -p "$ctx
 
-HISTORIAL DE LA CONVERSACIÓN:
-$history
+$prmt" -o text -y)
+    local exit_code=$RUN_CMD_EXIT
+    if [ "$exit_code" -eq 124 ]; then
+        echo "[Timeout Gemini (${GEMINI_TIMEOUT}s)]"
+        return
+    fi
+    # Filtrar logs de Gemini CLI
+    echo "$out" | grep -vE "^YOLO|^Loaded|^Hook|^I will|^$" | tail -3 | tr '\n' ' ' | sed 's/  */ /g'
+}
 
-NUEVO MENSAJE:"
-    
-    echo -e "${ORANGE}🧠 Claude pensando...${NC}" >&2
-    
-    local raw_output
+exec_claude() {
+    local ctx="$1"
+    local prmt="$2"
     local claude_settings_args=()
     if [ -f "$CLAUDE_CONFIG/settings.json" ]; then
         claude_settings_args+=(--settings "$CLAUDE_CONFIG/settings.json")
     fi
-    # Usar el CLI de Claude con los parámetros adecuados
-    raw_output=$(cd "$PROJECT_ROOT" && claude -p "$context
+    local out
+    out=$(run_cmd_capture "$CLAUDE_TIMEOUT" claude -p "$ctx
 
-$prompt" --print --allowed-tools "Read,Edit,Bash,Task" "${claude_settings_args[@]}" 2>&1) || true
-    
-    # Extraer respuesta real (filtrar líneas de metadata del CLI)
-    local response
-    response=$(echo "$raw_output" | grep -v "^\\[\\|starting session\\|^$\\|^Using config" | tail -5 | tr '\n' ' ' | sed 's/  */ /g')
-    
-    if [ -z "$response" ]; then
-        response="[Sin respuesta de Claude]"
+$prmt" --print --allowed-tools "Read,Edit,Bash,Task" "${claude_settings_args[@]}")
+    local exit_code=$RUN_CMD_EXIT
+    if [ "$exit_code" -eq 124 ]; then
+        echo "[Timeout Claude (${CLAUDE_TIMEOUT}s)]"
+        return
     fi
-    
-    echo -e "${ORANGE}🧠 Claude:${NC} $response" >&2
-    echo "[Claude] $response" >> "$HISTORY_FILE"
-    
-    echo "$response"
+    # Filtrar logs
+    echo "$out" | grep -v "^\\[\\|starting session|^$\|^Using config" | tail -5 | tr '\n' ' ' | sed 's/  */ /g'
 }
 
-# Enviar mensaje a Codex
-ask_codex() {
-    local prompt="$1"
-    local history
-    history=$(get_history)
-    
-    local context="Eres Codex en un chat multiagente con Kimi, Gemini, Claude y un humano.
-Proyecto: trading bot Polymarket en /home/josejordan/poly.
-Responde MUY conciso (2-3 frases max). Si necesitas info del humano, pregunta.
+exec_codex() {
+    local ctx="$1"
+    local prmt="$2"
+    local out
+    out=$(run_cmd_capture "$CODEX_TIMEOUT" codex exec "$ctx
 
-HISTORIAL DE LA CONVERSACIÓN:
-$history
-
-NUEVO MENSAJE:"
-    
-    echo -e "${RED}📝 Codex pensando...${NC}" >&2
-    
-    local raw_output
-    raw_output=$(cd "$PROJECT_ROOT" && codex exec "$context
-
-$prompt" --full-auto 2>&1) || true
-    
-    # Filtrar: extraer texto después de "codex" y antes de "tokens used"
-    # O tomar la última línea no vacía que no sea metadata
-    local response
-    response=$(echo "$raw_output" | grep -v "^OpenAI\|^workdir:\|^model:\|^provider:\|^approval:\|^sandbox:\|^reasoning\|^session\|^mcp\|^thinking\|^$\|^tokens used" | tail -1)
-    
-    if [ -z "$response" ]; then
-        response="[Sin respuesta de Codex]"
+$prmt" --full-auto)
+    local exit_code=$RUN_CMD_EXIT
+    if [ "$exit_code" -eq 124 ]; then
+        echo "[Timeout Codex (${CODEX_TIMEOUT}s)]"
+        return
     fi
-    
-    echo -e "${RED}📝 Codex:${NC} $response" >&2
-    echo "[Codex] $response" >> "$HISTORY_FILE"
-    
-    echo "$response"
+    # Filtrar logs
+    echo "$out" | grep -v "^OpenAI|^workdir:|^model:|^provider:|^approval:|^sandbox:|^reasoning|^session|^mcp|^thinking|^$\|^tokens used" | tail -1
 }
+
+# Funciones públicas
+ask_kimi() { call_agent_generic "Kimi" "$1" "$MAGENTA" "🤖" exec_kimi; }
+ask_gemini() { call_agent_generic "Gemini" "$1" "$BLUE" "💎" exec_gemini; }
+ask_claude() { call_agent_generic "Claude" "$1" "$ORANGE" "🧠" exec_claude; }
+ask_codex() { call_agent_generic "Codex" "$1" "$RED" "📝" exec_codex; }
 
 # Mostrar estado
 show_status() {
@@ -242,10 +280,57 @@ show_status() {
     echo -e "  Turnos: $TURN_COUNT"
     echo -e "  Agente activo: ${YELLOW}$ACTIVE_AGENT${NC}"
     echo -e "  Historial: $HISTORY_FILE"
-    if [ -f "$HISTORY_FILE" ]; then
-        echo -e "  Mensajes guardados: $(wc -l < "$HISTORY_FILE")"
+    echo -e "  Tamaño log: $(wc -l < "$HISTORY_FILE" 2>/dev/null || echo 0) líneas"
+    echo -e "  Timeouts: kimi ${KIMI_TIMEOUT}s, gemini ${GEMINI_TIMEOUT}s, claude ${CLAUDE_TIMEOUT}s, codex ${CODEX_TIMEOUT}s"
+    echo ""
+}
+
+# Mostrar contexto
+show_context() {
+    echo -e "${WHITE}Contexto: $CONTEXT_FILE (primeras ${CONTEXT_LINES} líneas)${NC}"
+    if [ -f "$CONTEXT_FILE" ]; then
+        head -n "$CONTEXT_LINES" "$CONTEXT_FILE"
+    else
+        echo "Contexto no disponible."
     fi
     echo ""
+}
+
+# Editar contexto
+edit_context() {
+    local editor="${EDITOR:-vi}"
+    "$editor" "$CONTEXT_FILE"
+}
+
+# Ejecutar múltiples agentes en paralelo
+run_parallel_agents() {
+    local msg="$1"
+    shift
+    local -a agents=("$@")
+    local tmp_dir
+    tmp_dir=$(mktemp -d)
+    local -a pids=()
+    local agent
+    for agent in "${agents[@]}"; do
+        local err_file="$tmp_dir/${agent}.err"
+        local out_file="$tmp_dir/${agent}.out"
+        case "$agent" in
+            kimi) (ask_kimi "$msg" >"$out_file" 2>"$err_file") & pids+=($!) ;;
+            gemini) (ask_gemini "$msg" >"$out_file" 2>"$err_file") & pids+=($!) ;;
+            claude) (ask_claude "$msg" >"$out_file" 2>"$err_file") & pids+=($!) ;;
+            codex) (ask_codex "$msg" >"$out_file" 2>"$err_file") & pids+=($!) ;;
+            *) echo -e "${RED}Agente desconocido: $agent${NC}" ;;
+        esac
+    done
+    local pid
+    for pid in "${pids[@]}"; do
+        wait "$pid" || true
+    done
+    for agent in "${agents[@]}"; do
+        cat "$tmp_dir/${agent}.err"
+        [ -s "$tmp_dir/${agent}.err" ] && echo ""
+    done
+    rm -rf "$tmp_dir"
 }
 
 # Procesar comando
@@ -254,161 +339,85 @@ process_command() {
     local cmd="${input%% *}"
     local args="${input#* }"
     
+    # Si el comando es igual a args (sin argumentos), limpiar args
+    [ "$cmd" == "$args" ] && args=""
+
     case "$cmd" in
-        /kimi)
-            if [ -n "$args" ] && [ "$args" != "$cmd" ]; then
-                ask_kimi "$args" > /dev/null
-            else
-                echo -e "${RED}Uso: /kimi <mensaje>${NC}"
-            fi
-            ;;
-        /gemini)
-            if [ -n "$args" ] && [ "$args" != "$cmd" ]; then
-                ask_gemini "$args" > /dev/null
-            else
-                echo -e "${RED}Uso: /gemini <mensaje>${NC}"
-            fi
-            ;;
-        /codex)
-            if [ -n "$args" ] && [ "$args" != "$cmd" ]; then
-                ask_codex "$args" > /dev/null
-            else
-                echo -e "${RED}Uso: /codex <mensaje>${NC}"
-            fi
-            ;;
-        /claude)
-            if [ -n "$args" ] && [ "$args" != "$cmd" ]; then
-                ask_claude "$args" > /dev/null
-            else
-                echo -e "${RED}Uso: /claude <mensaje>${NC}"
-            fi
-            ;;
+        /kimi) [ -n "$args" ] && ask_kimi "$args" >/dev/null || echo -e "${RED}Uso: /kimi <msg>${NC}" ;; 
+        /gemini) [ -n "$args" ] && ask_gemini "$args" >/dev/null || echo -e "${RED}Uso: /gemini <msg>${NC}" ;; 
+        /claude) [ -n "$args" ] && ask_claude "$args" >/dev/null || echo -e "${RED}Uso: /claude <msg>${NC}" ;; 
+        /codex) [ -n "$args" ] && ask_codex "$args" >/dev/null || echo -e "${RED}Uso: /codex <msg>${NC}" ;; 
         /both)
-            if [ -n "$args" ] && [ "$args" != "$cmd" ]; then
-                echo -e "${YELLOW}━━━ Preguntando a Kimi y Gemini ━━━${NC}"
-                ask_kimi "$args" > /dev/null
-                echo ""
-                ask_gemini "$args" > /dev/null
+            if [ -n "$args" ]; then
+                echo -e "${YELLOW}━━━ Kimi & Gemini ━━━${NC}"
+                run_parallel_agents "$args" kimi gemini
             else
-                echo -e "${RED}Uso: /both <mensaje>${NC}"
+                echo -e "${RED}Uso: /both <msg>${NC}"
             fi
-            ;;
+            ;; 
         /all)
-            if [ -n "$args" ] && [ "$args" != "$cmd" ]; then
-                echo -e "${YELLOW}━━━ Preguntando a todos los agentes ━━━${NC}"
-                ask_kimi "$args" > /dev/null
-                echo ""
-                ask_gemini "$args" > /dev/null
-                echo ""
-                ask_claude "$args" > /dev/null
-                echo ""
-                ask_codex "$args" > /dev/null
+            if [ -n "$args" ]; then
+                echo -e "${YELLOW}━━━ Todos los agentes ━━━${NC}"
+                run_parallel_agents "$args" kimi gemini claude codex
             else
-                echo -e "${RED}Uso: /all <mensaje>${NC}"
+                echo -e "${RED}Uso: /all <msg>${NC}"
             fi
-            ;;
+            ;; 
         /switch)
             case "$ACTIVE_AGENT" in
-                kimi) ACTIVE_AGENT="gemini" ;;
-                gemini) ACTIVE_AGENT="claude" ;;
-                claude) ACTIVE_AGENT="codex" ;;
-                codex) ACTIVE_AGENT="kimi" ;;
+                kimi) ACTIVE_AGENT="gemini" ;; 
+                gemini) ACTIVE_AGENT="claude" ;; 
+                claude) ACTIVE_AGENT="codex" ;; 
+                codex) ACTIVE_AGENT="kimi" ;; 
             esac
-            echo -e "${GREEN}Agente activo cambiado a: ${YELLOW}$ACTIVE_AGENT${NC}"
-            ;;
-        /status)
-            show_status
-            ;;
-        /help)
-            show_help
-            ;;
-        /quit|/exit|/q)
-            echo -e "${YELLOW}¡Hasta luego!${NC}"
-            exit 0
-            ;;
-        /*)
-            echo -e "${RED}Comando desconocido: $cmd${NC}"
-            echo -e "Escribe ${WHITE}/help${NC} para ver comandos disponibles"
-            ;;
+            echo -e "${GREEN}Agente activo: ${YELLOW}$ACTIVE_AGENT${NC}"
+            ;; 
+        /resume) resume_history "${args:-}" ;; 
+        /context)
+            if [ -z "$args" ]; then
+                show_context
+            elif [ "$args" == "edit" ]; then
+                edit_context
+            else
+                echo -e "${RED}Uso: /context [edit]${NC}"
+            fi
+            ;; 
+        /status) show_status ;; 
+        /help) show_help ;; 
+        /quit|/exit|/q) exit 0 ;; 
+        /*) echo -e "${RED}Comando desconocido: $cmd${NC}" ;; 
         *)
-            # Mensaje normal - enviar al agente activo
             TURN_COUNT=$((TURN_COUNT + 1))
-            echo "[Usuario] $input" >> "$HISTORY_FILE"
-            
+            write_history "[Usuario] $input"
             case "$ACTIVE_AGENT" in
-                kimi) ask_kimi "$input" > /dev/null ;;
-                gemini) ask_gemini "$input" > /dev/null ;;
-                claude) ask_claude "$input" > /dev/null ;;
-                codex) ask_codex "$input" > /dev/null ;;
+                kimi) ask_kimi "$input" >/dev/null ;; 
+                gemini) ask_gemini "$input" >/dev/null ;; 
+                claude) ask_claude "$input" >/dev/null ;; 
+                codex) ask_codex "$input" >/dev/null ;; 
             esac
-            ;;
+            ;; 
     esac
-}
-
-# Colaboración entre agentes
-agent_collaborate() {
-    local topic="$1"
-    
-    echo -e "${YELLOW}━━━ Iniciando colaboración entre agentes ━━━${NC}"
-    echo -e "${WHITE}Tema: $topic${NC}"
-    echo ""
-    
-    # Kimi analiza primero
-    echo -e "${MAGENTA}[Paso 1] Kimi analiza...${NC}"
-    local kimi_response
-    kimi_response=$(ask_kimi "Analiza esto y da tu opinión breve: $topic")
-    echo ""
-    
-    # Gemini responde a Kimi
-    echo -e "${BLUE}[Paso 2] Gemini responde a Kimi...${NC}"
-    local gemini_response
-    gemini_response=$(ask_gemini "Kimi dijo: '$kimi_response'. ¿Qué opinas? Añade o corrige si es necesario.")
-    echo ""
-    
-    # Claude responde
-    echo -e "${ORANGE}[Paso 3] Claude aporta...${NC}"
-    local claude_response
-    claude_response=$(ask_claude "Kimi dijo: '$kimi_response' y Gemini dijo: '$gemini_response'. ¿Qué aportas tú?")
-    echo ""
-    
-    # Preguntar al usuario
-    echo -e "${GREEN}[Paso 4] Tu turno...${NC}"
-    echo -e "${WHITE}¿Tienes alguna pregunta o instrucción adicional? (Enter para continuar)${NC}"
-    read -r user_input
-    
-    if [ -n "$user_input" ]; then
-        echo ""
-        echo -e "${YELLOW}━━━ Procesando tu input ━━━${NC}"
-        process_command "/all $user_input"
-    fi
-    
-    echo ""
-    echo -e "${GREEN}━━━ Colaboración completada ━━━${NC}"
 }
 
 # Main loop
 main() {
     cd "$PROJECT_ROOT"
-    
+    init_history_files
+    if [ "${1:-}" == "--resume" ] || [ "${1:-}" == "-r" ]; then
+        resume_history || true
+        shift || true
+    fi
     show_banner
     
-    # Si hay argumento inicial, iniciar colaboración
     if [ -n "${1:-}" ]; then
-        agent_collaborate "$1"
-        echo ""
+        echo -e "${YELLOW}Iniciando con instrucción: $1${NC}"
+        process_command "/all $1"
     fi
     
-    show_help
-    
-    # Loop interactivo
     while true; do
         echo -ne "${GREEN}Tú${NC} [${YELLOW}$ACTIVE_AGENT${NC}]> "
         read -r input || break
-        
-        if [ -z "$input" ]; then
-            continue
-        fi
-        
+        [ -z "$input" ] && continue
         echo ""
         process_command "$input"
         echo ""

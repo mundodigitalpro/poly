@@ -1,0 +1,2 @@
+[Kimi] ¡Hola José! 👋\n\nKimi aquí, listo para revisiones rápidas, análisis 
+[Gemini] YOLO mode is enabled. All tool calls will be automatically approved. Hook registry initialized with 0 hook entries El humano se llama José. Es el desarrollador principal y el usuario con el que interactuamos en este proyecto. 
