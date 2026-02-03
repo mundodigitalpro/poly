@@ -2,6 +2,34 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.16.1] - 2026-02-03 (Night)
+### Added - LLM Integration Proposal 🤖
+- **Propuesta de integración de LLM** para mejorar decisiones del bot.
+  - `docs/proposals/llm_integration_proposal.md`: Documento completo de análisis y planificación.
+  - Problema identificado: Bot sin "edge" real, alta correlación entre posiciones.
+  - Solución propuesta: Módulo `LLMAnalyst` para análisis de mercados con IA.
+
+  **Casos de uso propuestos:**
+  - Análisis de mercado pre-entrada con señales BUY/HOLD/SKIP
+  - Detección de correlación entre posiciones
+  - Validación final antes de ejecutar trades
+  - Análisis de noticias en tiempo real (fase avanzada)
+
+  **Proveedores evaluados:**
+  - OpenAI (gpt-4o-mini): ~$1.80/mes, mejor balance coste/calidad
+  - Google Gemini 1.5 Flash: Gratis, recomendado para desarrollo
+  - Anthropic Claude 3 Haiku: Alternativa comparable
+  - Groq/Ollama: Opciones gratuitas/locales
+
+  **Plan de implementación:**
+  - Fase 1 (MVP): Crear módulo base + integrar Gemini
+  - Fase 2: Integración con main_bot.py + cache
+  - Fase 3: Validación dry_run (1-2 semanas)
+  - Fase 4: Producción con monitoreo de costes
+
+### Documentation
+- Nueva carpeta `docs/proposals/` para propuestas de features.
+
 ## [0.16.0] - 2026-02-03 (Night)
 ### Changed - Strategy Improvements Phase 1 🎯
 Implementation of critical improvements from `docs/strategy_improvement_plan.md`:
