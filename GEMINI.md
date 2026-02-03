@@ -3,10 +3,11 @@
 This file serves as the long-term memory for the Gemini CLI agent working on the Polymarket Python Client project.
 
 ## Multi-Agent Team Setup
-Four AI agents collaborate on this project:
+Five AI agents collaborate on this project:
 - **GEMINI.md** (this file): Current state tracking, quick commands, contextual memory.
 - **AGENTS.md** (Codex): Process guidelines, commit/PR standards, testing workflows.
 - **CLAUDE.md** (Claude): Technical architecture, auth details, implementation patterns.
+- **Kimi** (Moonshot AI): Fast code reviews, security analysis, risk assessment.
 - **AMP** (New): Architect role (trial period). See `docs/team/AMP_INSTRUCTIONS.md`.
 
 **Coordination**: Keep state updates here; refer to AGENTS.md for "how to", CLAUDE.md for "how it works".
@@ -72,23 +73,32 @@ python -m pytest                           # Run tests
 ```
 
 ## Inter-Agent Communication
-| Agent | How to Contact | Example |
-|-------|----------------|---------|
-| **Claude** | Running in separate terminal | Direct conversation |
-| **Codex** | `codex exec "msg" --full-auto` | `codex exec "Review this PR" --full-auto` |
-| **Gemini** | `gemini -p "msg" -o text` | `gemini -p "What's the project status?" -o text` |
+The AI agents can communicate programmatically via CLI or unified wrapper:
 
-## Inter-Agent Communication (Pair Programming)
-The three AI agents can communicate programmatically:
+| Agent | CLI Command | Wrapper Command | Best Use |
+|-------|-------------|-----------------|----------|
+| **Claude** | Already in session | N/A (interactive) | Architecture, decisions |
+| **Codex** | `codex exec "msg" --full-auto` | `./scripts/ask_agent.sh codex "msg"` | Implementation, refactors |
+| **Gemini** | `gemini -p "msg" -o text` | `./scripts/ask_agent.sh gemini "msg"` | Status, context queries |
+| **Kimi** | `kimi -p "msg" --print` | `./scripts/ask_agent.sh kimi "msg"` | Fast review, analysis |
 
-| Agent | How to Contact | Example |
-|-------|----------------|---------|
-| **Claude** | Running in separate terminal | Direct conversation |
-| **Codex** | `codex exec "msg" --full-auto` | `codex exec "Review this PR" --full-auto` |
-| **Gemini** | `gemini -p "msg" -o text` | `gemini -p "What's the project status?" -o text` |
+### Unified Wrapper Script
+```bash
+# Recommended approach - normalizes all agent calls
+./scripts/ask_agent.sh <agent> "<prompt>" [output_file]
+
+# Examples
+./scripts/ask_agent.sh kimi "Review bot/trader.py for security issues"
+./scripts/ask_agent.sh gemini "What's the current phase?"
+./scripts/ask_agent.sh kimi "Analyze risks" /tmp/analysis.txt
+
+# Test connectivity
+./scripts/ask_agent.sh --test kimi
+./scripts/ask_agent.sh --test gemini
+```
 
 ### When Another Agent Contacts You
-- You may receive messages from Claude or Codex via the `-p` prompt flag
+- You may receive messages from Claude, Codex, or Kimi via the wrapper or `-p` flag
 - Acknowledge receipt and provide requested information
 - Update this file (GEMINI.md) with any state changes from the collaboration
 - Report completion status back to the requesting agent

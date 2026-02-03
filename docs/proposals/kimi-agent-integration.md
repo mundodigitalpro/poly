@@ -105,9 +105,9 @@ Dadas sus capacidades, Kimi se enfoca en:
 - [x] Test: `kimi -p "hola equipo" --print`
 
 ### P1 (Should have)
-- [ ] Update `CLAUDE.md` to use consistent Kimi command (`--print`)
-- [ ] Update `GEMINI.md` Inter-Agent Communication section to add Kimi
-- [ ] Añadir ejemplos de uso en documentación
+- [x] Update `CLAUDE.md` to use consistent Kimi command (`--print`)
+- [x] Update `GEMINI.md` Inter-Agent Communication section to add Kimi
+- [x] Añadir ejemplos de uso en documentación
 
 ### P2 (Nice to have)
 - [ ] Script de test de conectividad entre agentes

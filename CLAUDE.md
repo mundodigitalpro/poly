@@ -21,13 +21,15 @@ When making changes, ensure consistency across all memory files. Each agent brin
 
 The AI agents can communicate programmatically via their CLI tools in non-interactive mode:
 
-| Agent | Model | CLI Command | Non-Interactive Mode |
-|-------|-------|-------------|---------------------|
-| **Claude** | Opus 4.5 | `claude` | Already in session (this agent) |
-| **Codex** | GPT-5.2 | `codex` | `codex exec "prompt" --full-auto` |
-| **Gemini** | Gemini | `gemini` | `gemini -p "prompt" -o text` |
-| **Kimi** | Moonshot | `kimi` | `kimi -p "prompt" --quiet -y` |
-| **AMP** | - | `amp` | `amp -x "prompt"` (requires credits) |
+| Agent | Model | CLI Command | Non-Interactive Mode | Best Use |
+|-------|-------|-------------|---------------------|----------|
+| **Claude** | Opus 4.5 | `claude` | Already in session (this agent) | Architecture, decisions |
+| **Codex** | GPT-5.2 | `codex` | `codex exec "prompt" --full-auto` | Implementation, refactors |
+| **Gemini** | Gemini | `gemini` | `gemini -p "prompt" -o text` | Status, context queries |
+| **Kimi** | Moonshot | `kimi` | `kimi -p "prompt" --print` | Fast review, analysis |
+| **AMP** | - | `amp` | `amp -x "prompt"` (requires credits) | Trial architect |
+
+**Unified Wrapper** (recommended): `./scripts/ask_agent.sh <agent> "<prompt>" [output_file]`
 
 ### How to Communicate with Other Agents
 
@@ -47,9 +49,10 @@ gemini -p "Check project status" -o text -y
 
 **To Kimi** (quick code analysis, reviews):
 ```bash
-kimi -p "Your message here" --quiet -y
-# Alternative with full output:
-kimi -p "Review this function" --print -y
+kimi -p "Your message here" --print
+# Or using the unified wrapper:
+./scripts/ask_agent.sh kimi "Review this function"
+./scripts/ask_agent.sh kimi "Analyze risks" /tmp/analysis.txt
 ```
 
 ### Coordination Patterns
