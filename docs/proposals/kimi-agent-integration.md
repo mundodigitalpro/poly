@@ -131,12 +131,15 @@ Nuevo script para conversaciones interactivas entre agentes con contexto compart
 |---------|--------|
 | `/kimi <msg>` | Hablar solo con Kimi |
 | `/gemini <msg>` | Hablar solo con Gemini |
-| `/both <msg>` | Preguntar a ambos agentes |
-| `/switch` | Cambiar agente activo |
+| `/codex <msg>` | Hablar solo con Codex |
+| `/both <msg>` | Preguntar a Kimi y Gemini |
+| `/all <msg>` | Preguntar a los 3 agentes |
+| `/switch` | Rotar agente activo (kimi → gemini → codex) |
 | `/status` | Ver estado de la sesión |
 | `/quit` | Salir |
 
 ### Características
+- **3 agentes**: Kimi 🤖, Gemini 💎, Codex 📝
 - **Contexto compartido**: Los últimos 10 mensajes se pasan a cada agente
 - **Colaboración**: Los agentes pueden referirse a respuestas previas del otro
 - **Interactivo**: El humano puede intervenir en cualquier momento
