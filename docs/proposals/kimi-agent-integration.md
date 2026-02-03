@@ -110,9 +110,37 @@ Dadas sus capacidades, Kimi se enfoca en:
 - [x] Añadir ejemplos de uso en documentación
 
 ### P2 (Nice to have)
-- [ ] Script de test de conectividad entre agentes
+- [x] Script de chat multiagente interactivo (`scripts/agent_chat.sh`)
 - [ ] Pin Kimi CLI version once determined
 - [ ] Add Kimi to team member list in all three memory files
+
+## Multi-Agent Interactive Chat
+
+Nuevo script para conversaciones interactivas entre agentes con contexto compartido:
+
+```bash
+# Con instrucción inicial (colaboración automática)
+./scripts/agent_chat.sh "Revisen bot/trader.py y sugieran mejoras"
+
+# Modo interactivo puro
+./scripts/agent_chat.sh
+```
+
+### Comandos durante la sesión
+| Comando | Acción |
+|---------|--------|
+| `/kimi <msg>` | Hablar solo con Kimi |
+| `/gemini <msg>` | Hablar solo con Gemini |
+| `/both <msg>` | Preguntar a ambos agentes |
+| `/switch` | Cambiar agente activo |
+| `/status` | Ver estado de la sesión |
+| `/quit` | Salir |
+
+### Características
+- **Contexto compartido**: Los últimos 10 mensajes se pasan a cada agente
+- **Colaboración**: Los agentes pueden referirse a respuestas previas del otro
+- **Interactivo**: El humano puede intervenir en cualquier momento
+- **Historial**: Se guarda en `/tmp/agent_chat_history_<pid>.txt`
 
 ## Unified Agent Wrapper Script
 

@@ -93,6 +93,17 @@ kimi -p "Review bot/trader.py for security issues" --print
 ./scripts/ask_agent.sh gemini "Current phase and blockers?"
 ```
 
+### Multi-Agent Interactive Chat
+Para conversaciones interactivas entre Kimi y Gemini con contexto compartido:
+```bash
+# Iniciar colaboración con instrucción
+./scripts/agent_chat.sh "Revisen bot/trader.py y sugieran mejoras"
+
+# Modo interactivo puro
+./scripts/agent_chat.sh
+```
+Comandos: `/kimi`, `/gemini`, `/both`, `/switch`, `/status`, `/quit`
+
 ### Coordination Guidelines
 - Use inter-agent communication for: code reviews, task delegation, status checks
 - Each agent should update its memory file after completing significant work
