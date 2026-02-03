@@ -2,7 +2,7 @@
 #
 # Multi-Agent Interactive Chat
 #
-# Permite conversaciones interactivas entre Kimi, Gemini y el usuario.
+# Permite conversaciones interactivas entre Kimi, Gemini, Claude y el usuario.
 # Los agentes pueden interactuar entre sí y preguntar al usuario.
 #
 # Uso:
@@ -12,7 +12,9 @@
 # Comandos durante la sesión:
 #   /kimi <mensaje>   - Enviar mensaje directamente a Kimi
 #   /gemini <mensaje> - Enviar mensaje directamente a Gemini
-#   /both <mensaje>   - Enviar mensaje a ambos agentes
+#   /claude <mensaje> - Enviar mensaje directamente a Claude
+#   /both <mensaje>   - Enviar mensaje a Kimi y Gemini
+#   /all <mensaje>    - Enviar mensaje a todos los agentes
 #   /switch           - Cambiar el agente activo
 #   /status           - Ver estado de la conversación
 #   /help             - Mostrar ayuda
@@ -29,12 +31,14 @@ BLUE='\033[0;34m'
 MAGENTA='\033[0;35m'
 CYAN='\033[0;36m'
 WHITE='\033[1;37m'
+ORANGE='\033[0;33m'
 NC='\033[0m'
 
 # Configuración
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 HISTORY_FILE="/tmp/agent_chat_history_$$.txt"
+CLAUDE_CONFIG="/home/josejordan/.claude"
 TURN_COUNT=0
 ACTIVE_AGENT="kimi"
 
@@ -49,7 +53,7 @@ trap cleanup EXIT
 show_banner() {
     echo -e "${CYAN}╔════════════════════════════════════════════════════════════╗${NC}"
     echo -e "${CYAN}║${NC}        ${WHITE}Multi-Agent Interactive Chat${NC}                        ${CYAN}║${NC}"
-    echo -e "${CYAN}║${NC}        ${MAGENTA}Kimi${NC} 🤖 + ${BLUE}Gemini${NC} 💎 + ${RED}Codex${NC} 📝 + ${GREEN}Tú${NC} 👤              ${CYAN}║${NC}"
+    echo -e "${CYAN}║${NC}     ${MAGENTA}Kimi${NC} 🤖 ${BLUE}Gemini${NC} 💎 ${ORANGE}Claude${NC} 🧠 ${RED}Codex${NC} 📝 + ${GREEN}Tú${NC} 👤          ${CYAN}║${NC}"
     echo -e "${CYAN}╚════════════════════════════════════════════════════════════╝${NC}"
     echo ""
 }
@@ -59,6 +63,7 @@ show_help() {
     echo -e "${WHITE}Comandos disponibles:${NC}"
     echo -e "  ${MAGENTA}/kimi${NC} <msg>    Enviar mensaje a Kimi"
     echo -e "  ${BLUE}/gemini${NC} <msg> Enviar mensaje a Gemini"
+    echo -e "  ${ORANGE}/claude${NC} <msg> Enviar mensaje a Claude"
     echo -e "  ${RED}/codex${NC} <msg>  Enviar mensaje a Codex"
     echo -e "  ${YELLOW}/both${NC} <msg>   Enviar a Kimi y Gemini"
     echo -e "  ${CYAN}/all${NC} <msg>    Enviar a todos los agentes"
@@ -86,7 +91,7 @@ ask_kimi() {
     local history
     history=$(get_history)
     
-    local context="Eres Kimi en un chat multiagente con Gemini y un humano.
+    local context="Eres Kimi en un chat multiagente con Gemini, Claude, Codex y un humano.
 Proyecto: trading bot Polymarket en /home/josejordan/poly.
 Responde MUY conciso (2-3 frases max). Si necesitas info del humano, pregunta.
 
@@ -122,7 +127,7 @@ ask_gemini() {
     local history
     history=$(get_history)
     
-    local context="Eres Gemini en un chat multiagente con Kimi, Codex y un humano.
+    local context="Eres Gemini en un chat multiagente con Kimi, Claude, Codex y un humano.
 Proyecto: trading bot Polymarket en /home/josejordan/poly.
 Responde MUY conciso (2-3 frases max). Si necesitas info del humano, pregunta.
 
@@ -152,13 +157,55 @@ $prompt" -o text -y 2>&1) || true
     echo "$response"
 }
 
+# Enviar mensaje a Claude
+ask_claude() {
+    local prompt="$1"
+    local history
+    history=$(get_history)
+    
+    local context="Eres Claude en un chat multiagente con Kimi, Gemini, Codex y un humano.
+Configuración: $CLAUDE_CONFIG
+Proyecto: trading bot Polymarket en /home/josejordan/poly.
+Responde MUY conciso (2-3 frases max). Si necesitas info del humano, pregunta.
+
+HISTORIAL DE LA CONVERSACIÓN:
+$history
+
+NUEVO MENSAJE:"
+    
+    echo -e "${ORANGE}🧠 Claude pensando...${NC}" >&2
+    
+    local raw_output
+    local claude_settings_args=()
+    if [ -f "$CLAUDE_CONFIG/settings.json" ]; then
+        claude_settings_args+=(--settings "$CLAUDE_CONFIG/settings.json")
+    fi
+    # Usar el CLI de Claude con los parámetros adecuados
+    raw_output=$(cd "$PROJECT_ROOT" && claude -p "$context
+
+$prompt" --print --allowed-tools "Read,Edit,Bash,Task" "${claude_settings_args[@]}" 2>&1) || true
+    
+    # Extraer respuesta real (filtrar líneas de metadata del CLI)
+    local response
+    response=$(echo "$raw_output" | grep -v "^\\[\\|starting session\\|^$\\|^Using config" | tail -5 | tr '\n' ' ' | sed 's/  */ /g')
+    
+    if [ -z "$response" ]; then
+        response="[Sin respuesta de Claude]"
+    fi
+    
+    echo -e "${ORANGE}🧠 Claude:${NC} $response" >&2
+    echo "[Claude] $response" >> "$HISTORY_FILE"
+    
+    echo "$response"
+}
+
 # Enviar mensaje a Codex
 ask_codex() {
     local prompt="$1"
     local history
     history=$(get_history)
     
-    local context="Eres Codex en un chat multiagente con Kimi, Gemini y un humano.
+    local context="Eres Codex en un chat multiagente con Kimi, Gemini, Claude y un humano.
 Proyecto: trading bot Polymarket en /home/josejordan/poly.
 Responde MUY conciso (2-3 frases max). Si necesitas info del humano, pregunta.
 
@@ -229,6 +276,13 @@ process_command() {
                 echo -e "${RED}Uso: /codex <mensaje>${NC}"
             fi
             ;;
+        /claude)
+            if [ -n "$args" ] && [ "$args" != "$cmd" ]; then
+                ask_claude "$args" > /dev/null
+            else
+                echo -e "${RED}Uso: /claude <mensaje>${NC}"
+            fi
+            ;;
         /both)
             if [ -n "$args" ] && [ "$args" != "$cmd" ]; then
                 echo -e "${YELLOW}━━━ Preguntando a Kimi y Gemini ━━━${NC}"
@@ -246,6 +300,8 @@ process_command() {
                 echo ""
                 ask_gemini "$args" > /dev/null
                 echo ""
+                ask_claude "$args" > /dev/null
+                echo ""
                 ask_codex "$args" > /dev/null
             else
                 echo -e "${RED}Uso: /all <mensaje>${NC}"
@@ -254,7 +310,8 @@ process_command() {
         /switch)
             case "$ACTIVE_AGENT" in
                 kimi) ACTIVE_AGENT="gemini" ;;
-                gemini) ACTIVE_AGENT="codex" ;;
+                gemini) ACTIVE_AGENT="claude" ;;
+                claude) ACTIVE_AGENT="codex" ;;
                 codex) ACTIVE_AGENT="kimi" ;;
             esac
             echo -e "${GREEN}Agente activo cambiado a: ${YELLOW}$ACTIVE_AGENT${NC}"
@@ -281,6 +338,7 @@ process_command() {
             case "$ACTIVE_AGENT" in
                 kimi) ask_kimi "$input" > /dev/null ;;
                 gemini) ask_gemini "$input" > /dev/null ;;
+                claude) ask_claude "$input" > /dev/null ;;
                 codex) ask_codex "$input" > /dev/null ;;
             esac
             ;;
@@ -307,15 +365,21 @@ agent_collaborate() {
     gemini_response=$(ask_gemini "Kimi dijo: '$kimi_response'. ¿Qué opinas? Añade o corrige si es necesario.")
     echo ""
     
+    # Claude responde
+    echo -e "${ORANGE}[Paso 3] Claude aporta...${NC}"
+    local claude_response
+    claude_response=$(ask_claude "Kimi dijo: '$kimi_response' y Gemini dijo: '$gemini_response'. ¿Qué aportas tú?")
+    echo ""
+    
     # Preguntar al usuario
-    echo -e "${GREEN}[Paso 3] Tu turno...${NC}"
+    echo -e "${GREEN}[Paso 4] Tu turno...${NC}"
     echo -e "${WHITE}¿Tienes alguna pregunta o instrucción adicional? (Enter para continuar)${NC}"
     read -r user_input
     
     if [ -n "$user_input" ]; then
         echo ""
         echo -e "${YELLOW}━━━ Procesando tu input ━━━${NC}"
-        process_command "/both $user_input"
+        process_command "/all $user_input"
     fi
     
     echo ""

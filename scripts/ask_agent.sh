@@ -59,7 +59,7 @@ Agentes disponibles:
   kimi      - Reviews rápidos, análisis de seguridad
   codex     - Implementación, refactors de código
   gemini    - Consultas de estado, contexto del proyecto
-  claude    - (Interactivo) Arquitectura, decisiones complejas
+  claude    - Arquitectura, decisiones complejas, implementación
 
 Opciones:
   -h, --help     Mostrar esta ayuda
@@ -139,9 +139,14 @@ test_agent() {
                 log_error "Claude CLI no instalado"
                 return 1
             fi
-            log_warn "Claude es interactivo por naturaleza"
-            log_info "Claude está instalado"
-            return 0
+            # Test simple
+            if claude -p "responde OK" --print 2>/dev/null | grep -q "."; then
+                log_success "Claude responde correctamente"
+                return 0
+            else
+                log_error "Claude no responde. Verifica configuración"
+                return 1
+            fi
             ;;
         *)
             log_error "Agente desconocido: $agent"
@@ -175,9 +180,8 @@ execute_agent() {
             cmd="gemini -p \"$prompt\" -o text -y"
             ;;
         claude)
-            log_error "Claude no soporta modo non-interactivo"
-            log_info "Ejecuta directamente: claude"
-            return 1
+            # Claude: non-interactive con --print
+            cmd="claude -p \"$prompt\" --print --allowed-tools \"Read,Edit,Bash,Task\""
             ;;
         *)
             log_error "Agente desconocido: $agent"
