@@ -1,10 +1,11 @@
 # Repository Guidelines
 
 ## Multi-Agent Development Team
-This repository employs four AI agents with complementary roles:
+This repository employs five AI agents with complementary roles:
 - **AGENTS.md** (Codex, this file): Process guidelines, development workflows, commit standards, coding conventions, and testing procedures.
 - **CLAUDE.md** (Claude): Technical architecture, authentication flows, implementation patterns, and deep technical details.
 - **GEMINI.md** (Gemini): Current project state, progress tracking, quick command reference, and contextual memory.
+- **Kimi** (Moonshot AI): Fast code reviews, security analysis, risk assessment, and debugging support.
 - **AMP** (Trial): Substitute Architect role during evaluation. Instructions in `AMP_INSTRUCTIONS.md`. Interactive mode only.
 
 When contributing, consult the relevant memory file for your needs. Maintain consistency across all three files when updating shared information (auth, commands, bot status).
@@ -60,19 +61,21 @@ The project is organized into logical directories:
 - Update `CLAUDE.md` when authentication patterns or core component behavior changes.
 
 ## Inter-Agent Communication (Pair Programming)
-The three AI agents can communicate programmatically via terminal commands:
+The AI agents can communicate programmatically via terminal commands:
 
-| Agent | CLI Tool | Non-Interactive Command | Version |
-|-------|----------|------------------------|---------|
-| **Claude** | `claude` | Already in session | Opus 4.5 |
-| **Codex** | `codex` | `codex exec "message" --full-auto` | 0.92.0 |
-| **Gemini** | `gemini` | `gemini -p "message" -o text` | 0.26.0 |
+| Agent | CLI Tool | Non-Interactive Command | Best Use | Version |
+|-------|----------|------------------------|----------|---------|
+| **Claude** | `claude` | Already in session | Architecture, decisions | Opus 4.5 |
+| **Codex** | `codex` | `codex exec "message" --full-auto` | Implementation, refactors | 0.92.0 |
+| **Gemini** | `gemini` | `gemini -p "message" -o text` | Status, context queries | 0.26.0 |
+| **Kimi** | `kimi` | `kimi -p "message" --print` | Fast review, analysis | Latest |
 
 ### How It Works
 - Each agent can invoke another agent's CLI in non-interactive mode
 - Responses are returned as stdout text
-- Use `--full-auto` (Codex) or `-y` (Gemini) for auto-approval of actions
-- Save responses to file: `-o file.txt` (Codex) or redirect stdout (Gemini)
+- Use `--full-auto` (Codex), `-y` (Gemini), or `--print` (Kimi) for auto-approval
+- Save responses to file: `-o file.txt` (Codex) or redirect stdout
+- **Unified wrapper**: `./scripts/ask_agent.sh <agent> "<prompt>" [output_file]`
 
 ### Communication Examples
 ```bash
@@ -82,8 +85,12 @@ codex exec "Review the changes in market_scanner.py for code quality" --full-aut
 # Claude asking Gemini about project state
 gemini -p "What is the current phase and next task?" -o text
 
-# Codex asking Gemini for context
-gemini -p "Summarize recent changes to the bot" -o text
+# Claude asking Kimi for security review
+kimi -p "Review bot/trader.py for security issues" --print
+
+# Using the unified wrapper (recommended)
+./scripts/ask_agent.sh kimi "Analyze order placement risks"
+./scripts/ask_agent.sh gemini "Current phase and blockers?"
 ```
 
 ### Coordination Guidelines
